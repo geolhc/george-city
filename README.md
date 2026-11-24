@@ -46,3 +46,17 @@ PlayCanvas Engine was considered for its entity/component model and editor-orien
 - **Future private rooms** can route input commands through a room authority, replicate snapshots by player ID and validate mission events server-side. A future dialogue provider can read per-player memories and return responses. Room membership, invitation codes, networking, remote avatars and external AI are future work.
 
 All district art, characters, sign designs and musical sequences are original procedural work. Babylon.js is Apache-2.0. Vite, TypeScript and tsx retain their upstream licenses. This prototype requires WebGL and a modern browser. Rendering resolution reduces under sustained frame pressure.
+
+## V0.1.1 foundation (unreleased)
+See [architecture](docs/ARCHITECTURE.md), [prioritized backlog](docs/ROADMAP.md)
+and [changelog](CHANGELOG.md). Existing version-1 saves remain compatible.
+Valid previous saves are retained as a local backup. Back up browser data before
+clearing site storage; this is not cloud sync.
+
+Production regression: build, serve dist on port 4173, then run
+`node scripts/smoke.cjs`. Install Chrome using `npx playwright install chrome`,
+or set `CITY_BROWSER=/usr/bin/chromium`. CITY_URL overrides the served URL.
+Smoke tests use seeded mission positions and are not full traversal tests.
+PR checks do not deploy. Main pushes still deploy through pages.yml; merge only
+after approval and passing checks. Roll back with a reviewed revert of the release,
+then verify Pages assets and save compatibility. Never reset player saves to roll back.

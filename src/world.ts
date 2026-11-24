@@ -29,6 +29,7 @@ export function clear(x:number,z:number,r=0.45,race=false){
 export interface InputCommand {side:number; forward:number; sprint:boolean}
 export interface Player extends Point {heading:number; speed:number; driving:boolean}
 export function step(p:Player,c:InputCommand,yaw:number,dt:number,race=false,boost=false){
+ c={...c,forward:Math.max(-1,Math.min(1,c.forward)),side:Math.max(-1,Math.min(1,c.side))}
  const limit= p.driving?(boost?18:15):c.sprint?8.4:4.5
  let dx=0,dz=0
  if(p.driving){
