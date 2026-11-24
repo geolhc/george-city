@@ -1,3 +1,8 @@
+import {advancePulse,frequencies,pulseRange,startPulse,targetFrequency} from './pulse'
+import {guideNearby,novaDialogue,scanAt,scanRange,type GuideMode} from './exploration'
+import {ActivityPortal} from './activities/portal'
+import {challenges,cityRewards,cityXP,recordCompletion} from './progression'
+import {discoveries,pulseRoutes,venues,type PulseId} from './city-content'
 import {SimulationClock} from './runtime'
 import {load,persist} from './storage'
 import './style.css'
@@ -28,18 +33,88 @@ canvas.onpointerdown=e=>{cameraId=e.pointerId;lastX=e.clientX;canvas.setPointerC
 canvas.onpointermove=e=>{if(e.pointerId===cameraId){yaw+=(e.clientX-lastX)*.008;lastX=e.clientX;manual=2}}
 canvas.onlostpointercapture=()=>{cameraId=-1}
 el('sprint').onclick=()=>{run=!run;el('sprint').classList.toggle('on',run)}
-window.addEventListener('blur',()=>{resetInput();save()});document.addEventListener('visibilitychange',()=>{resetInput();save()});window.addEventListener('pagehide',save)
+window.addEventListener('blur',()=>{resetInput();save()});document.addEventListener('visibilitychange',()=>{resetInput();audio.visibilityChanged();save()});window.addEventListener('pagehide',save)
+const guide=el('nova'),guideToggle=el<HTMLButtonElement>('nova-toggle')
+let guideMode:GuideMode='open'
+try{
+ const preference=localStorage.getItem('george-city.nova')
+ if(preference==='compact'||preference==='off')guideMode=preference
+}catch{/* Session preferences still work. */}
+function updateGuide(){
+ guide.hidden=guideMode==='off'
+ el('nova-copy').hidden=guideMode!=='open'
+ guideToggle.setAttribute('aria-expanded',String(guideMode==='open'))
+}
+function setGuide(mode:GuideMode){
+ guideMode=mode
+ try{localStorage.setItem('george-city.nova',mode)}catch{/* Session preferences still work. */}
+ updateGuide()
+}
+guideToggle.onclick=()=>setGuide(guideMode==='open'?'compact':'open')
+updateGuide()
 let reduced=matchMedia('(prefers-reduced-motion: reduce)').matches
 try{const pref=localStorage.getItem('george-city.motion');if(pref!==null)reduced=pref==='reduced'}catch{/* Session preferences still work. */}
 function soundMenu(){open('設定 · Settings');button('減少動態 '+(reduced?'開':'關'),()=>{
  reduced=!reduced
  try{localStorage.setItem('george-city.motion',reduced?'reduced':'full')}catch{/* Session only. */}
  soundMenu()
+});button('NOVA 嚮導 '+{open:'開',compact:'收起',off:'關'}[guideMode],()=>{
+ setGuide({open:'compact',compact:'off',off:'open'}[guideMode] as GuideMode)
+ soundMenu()
 });para('月潮里 FM · 原創夜行電子樂');button('配樂 '+(audio.music?'開':'關'),()=>{audio.toggleMusic();soundMenu()});button('提示音 '+(audio.fx?'開':'關'),()=>{audio.fx=!audio.fx;audio.chime();soundMenu()});button('廣東話廣播 '+(audio.voice?'開':'關'),()=>{audio.voice=!audio.voice;message('各位街坊，歡迎嚟到月潮里。',true);soundMenu()});para('語音會使用裝置上嘅廣東話聲線。')}
 el('sound').onclick=soundMenu
 function boot(){
  const v=createView(canvas),p=s.player
- const residents=Array.from({length:citizens.length},(_,i)=>v.person(citizens[i].color,i+1))
+ let scanStarted=-Infinity
+ let scanSignals=new Set<string>()
+ const metGuidance=new Set<string>()
+ const speakNova=(line:string,voice=false)=>{
+  el('nova-line').textContent=line
+  if(voice&&guideMode==='open')audio.say(line)
+ }
+ speakNova(novaDialogue.reply(s,'arrival'))
+ el('nova-hint').onclick=()=>speakNova(novaDialogue.reply(s,'hint'),true)
+ function scan(){
+  if(panel.open||portal.active)return
+  if(p.driving){message('落車先可以用城市掃描。');return}
+  if(s.clock-scanStarted<1.1)return
+  scanStarted=s.clock
+  const {signals,earned}=scanAt(p,s.city.stamps)
+  scanSignals=new Set(signals.map(site=>site.id))
+  audio.effect(signals.length?610:365)
+  if(earned.length){
+   message('掃描發現 · '+earned.map(site=>site.name).join('、')+'　+'+(15*earned.length)+' XP')
+   speakNova(novaDialogue.reply(s,'discovery',earned[0].name),true)
+   save()
+  }else if(signals.length)message(signals[0].name+' · '+signals[0].story)
+  else message('附近未有訊號。City OS 掃描手帳有地區線索。')
+ }
+ el('scan').onclick=scan
+ let freshFrame=false
+ const portal=new ActivityPortal(el<HTMLDialogElement>('activity'),audio,s.city,playing=>{
+  resetInput()
+  if(playing){
+   freshFrame=true
+   v.engine.resize()
+   v.engine.runRenderLoop(render)
+   hud()
+  }else{
+   save()
+   v.engine.stopRenderLoop(render)
+  }
+ },(id,score)=>{
+  const result=recordCompletion(s.city,id,score)
+  if(result.reward)speakNova(novaDialogue.reply(s,'reward',result.reward))
+  save()
+  return result
+ })
+ const residents=citizens.map((who,i)=>{
+  const resident=v.person(who.color,i+1)
+  const at=npcAt(i,s.clock)
+  resident.root.position.set(at.x,0,at.z)
+  resident.root.rotation.y=at.heading
+  return resident
+ })
  const cars=[v.car,v.racer],traffic=[v.vehicle('#c8a362'),v.vehicle('#7199ad')]
  const skin=['#df665c','#ff7d71','#af83df','#dfab56','#7dd9b5','#b4cfdf']
  let selected=-1
@@ -54,7 +129,83 @@ function boot(){
   para('服飾收藏　'+outfits.filter((_,i)=>i===0||s.records[i-1]!==undefined).join('　'))
   const earned=[s.discovered.length===3?'街影收藏家':'',s.records[3]!==undefined?'午夜車手':'',Object.keys(s.records).length===5?'月潮里街坊':''].filter(Boolean)
   para('成就　'+(earned.join('　')||'探索地標、完成委託即可獲得'))
+  const rewards=cityRewards(s.city)
+  para('City XP　'+cityXP(s.city)+'　·　掃描印章 '+s.city.stamps.length+'/'+discoveries.length)
+  para('收藏徽章　'+(rewards.map(id=>challenges[id].item).join('　')||'—')+(s.city.stamps.length===discoveries.length?'　月潮探路員':''))
+  for(const [id,challenge] of Object.entries(challenges)){
+   const record=s.city.records[id as keyof typeof challenges]
+   if(record)para(challenge.name+'　完成 '+record.runs+' 次'+(id==='sync'||id==='cafe'?'　·　個人最佳 '+record.best.toLocaleString():''))
+  }
   button('‹ City OS',cityOS)
+ }
+ function scanLog(){
+  open('城市掃描 · City Scan')
+  para('街上㩒 ⌖ 或 Q，掃描八米內嘅訊號。沿住地區線索行，尋找 '+discoveries.length+' 枚印章。')
+  para('已收錄 '+s.city.stamps.length+'/'+discoveries.length)
+  const log=document.createElement('dl')
+  log.className='scan-log'
+  for(const site of discoveries){
+   const title=document.createElement('dt'),story=document.createElement('dd')
+   const found=s.city.stamps.includes(site.id)
+   title.textContent=found?site.name:'未辨識訊號 · '+site.area
+   story.textContent=found?site.story:site.area
+   log.append(title)
+   if(found)log.append(story)
+  }
+  el('content').append(log)
+  button('‹ City OS',cityOS)
+ }
+ function pulseMenu(){
+  open('城市脈搏 · City Pulse')
+  para('到街上搵速遞站或月輪光網。完成咗可以再接，紀念章每款只派一次。')
+  for(const [id,route] of Object.entries(pulseRoutes)){
+   const runs=s.city.records[id as PulseId]?.runs??0
+   para(route.name+'　·　'+(id==='delivery'?'西街速遞站':'月輪廣場北面')+(runs?'　·　完成 '+runs+' 次':''))
+  }
+  if(s.city.pulse){
+   para(pulseRoutes[s.city.pulse.id].stops[s.city.pulse.stage].label)
+   button('停止城市事件',()=>{
+    s.city.pulse=null
+    save()
+    pulseMenu()
+   })
+  }
+  button('‹ City OS',cityOS)
+ }
+ function beginPulse(id:PulseId){
+  if(!startPulse(s.city,id,p))return
+  message(id==='delivery'?'肥波 · 北閘部機械人卡住咗，幫佢接手個包裹吖。':'光網唔穩定。跟住藍色訊號，逐個校準三座發射器。',true)
+  audio.effect(550)
+  save()
+ }
+ function completePulse(frequency?:number){
+  const id=s.city.pulse?.id
+  if(!id)return
+  const result=advancePulse(s.city,p,frequency)
+  if(result==='none')return
+  if(result==='mismatch'){
+   el('relay-feedback').textContent='頻率唔啱。睇返接收器顯示嘅符號。'
+   audio.effect(145)
+   return
+  }
+  if(panel.open)panel.close()
+  audio.effect(result==='finish'?810:570)
+  if(result==='finish'){
+   const earned=recordCompletion(s.city,id,1)
+   if(earned.reward)speakNova(novaDialogue.reply(s,'reward',earned.reward))
+   message(pulseRoutes[id].name+'完成！'+(earned.reward?'　已收藏 '+earned.reward+'　+'+challenges[id].xp+' XP':''),true)
+  }else message(id==='delivery'?'包裹上手。跟住藍點過對面睇更亭。':'訊號穩定。跟住藍點去下一座發射器。')
+  save()
+ }
+ function tuneRelay(){
+  open('光網發射器')
+  para('接收器訊號　'+frequencies[targetFrequency(s.city)])
+  para('揀相同頻率，將光束接返入月輪。')
+  frequencies.forEach((frequency,i)=>button(frequency,()=>completePulse(i)))
+  const feedback=document.createElement('p')
+  feedback.id='relay-feedback'
+  feedback.setAttribute('role','status')
+  el('content').append(feedback)
  }
  function cityOS(){
   open('City OS')
@@ -62,8 +213,13 @@ function boot(){
   button('城市地圖',()=>{open('月潮里 · Map');radar()
    const chart=document.createElement('canvas');chart.width=chart.height=160;chart.className='district-map'
    chart.setAttribute('aria-label','月潮里北向地圖');chart.getContext('2d')!.drawImage(el<HTMLCanvasElement>('map'),0,0)
-   el('content').append(chart);para('三角形：你　·　粉紅：委託　·　金色：目的地');button('‹ City OS',cityOS)})
+   el('content').append(chart)
+   para('三角形係你嘅位置。粉紅點係委託，金色點係委託目的地，藍色點係城市脈搏。')
+   para('淺藍入口 · 東邊 PLAYVERSE，西邊月潮冰室。')
+   button('‹ City OS',cityOS)})
   button('街坊委託 · Activities',journal)
+  button('城市掃描 · City Scan',scanLog)
+  button('城市脈搏 · City Pulse',pulseMenu)
   if(s.active)para(titles[s.active.id]+'　/　'+labels[s.active.id][s.active.stage])
   button('City ID',cityId);button('設定',soundMenu)
  }
@@ -92,14 +248,23 @@ function boot(){
   const options:{d:number;action:Interaction}[]=[]
   function offer(at:Point,label:string,fn:()=>void,r=3){let d=distance(p,at);if(d<=r)options.push({d,action:{label,do:fn}})}
   if(!a)starts.forEach((pos,i)=>offer(pos,titles[i],()=>mission(i),3.3))
+  offer(venues.sync,venues.sync.label,()=>void portal.enter('sync',venues.sync.title,reduced),2.7)
+  offer(venues.cafe,venues.cafe.label,()=>void portal.enter('cafe',venues.cafe.title,reduced),2.7)
+  const pulse=s.city.pulse
+  if(pulse){
+   const stop=pulseRoutes[pulse.id].stops[pulse.stage]
+   offer(stop,stop.action,pulse.id==='energy'?tuneRelay:()=>completePulse(),pulseRange)
+  }else{
+   for(const id of ['delivery','energy'] as const)offer(pulseRoutes[id].start,pulseRoutes[id].offer,()=>beginPulse(id),pulseRange)
+  }
   offer(shop,'逛茶檔／換衫',tailor)
   cars.forEach((_,i)=>offer(s.cars[i],i?'月潮 GT':'上車',()=>{if(i&&s.records[3]===undefined){message('跑完午夜飛圈，車房就會交匙。');return}s.ride=i;Object.assign(p,s.cars[i],{speed:0,driving:true,heading:cars[i].rotation.y});save()}))
   residents.forEach((n,i)=>offer(n.root.position,'同'+citizens[i%4].name+'傾偈',()=>{const who=citizens[i%4];message(who.name+' · '+who.job+'：「'+authored.reply(s,i%4)+'」',true);save()},2.1))
   return options.sort((a,b)=>a.d-b.d)[0]?.action||null
  }
- function action(){if(!panel.open)nearby()?.do()}
+ function action(){if(!panel.open&&!portal.active)nearby()?.do()}
  act.onclick=action
- window.onkeydown=e=>{if(panel.open)return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyE'].includes(e.code))e.preventDefault();keys.add(e.code);if(e.repeat)return;if(e.code==='KeyE'||e.code==='Space')action();if(e.code==='KeyM')cityOS()}
+ window.onkeydown=e=>{if(panel.open||portal.active)return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyE'].includes(e.code))e.preventDefault();keys.add(e.code);if(e.repeat)return;if(e.code==='KeyE'||e.code==='Space')action();if(e.code==='KeyM')cityOS();if(e.code==='KeyQ')scan()}
  window.onkeyup=e=>keys.delete(e.code)
  const map=el<HTMLCanvasElement>('map').getContext('2d')!
  function radar(){
@@ -109,7 +274,13 @@ function boot(){
   map.fillStyle='#53616a';for(const b of blocks){const [x,y]=project(b);map.fillRect(x-b.w*scale/2,y-b.d*scale/2,b.w*scale,b.d*scale)}
   const dot=(a:Point,color:string,r:number)=>{const [x,y]=project(a);map.fillStyle=color;map.beginPath();map.arc(x,y,r,0,7);map.fill()}
   if(race){map.strokeStyle='#75b6ac';map.lineWidth=9;map.strokeRect(51,33,58,93)}
-  else starts.forEach((a,i)=>dot(a,s.records[i]===undefined?'#ffab9b':'#77b2a4',3))
+  else {
+   Object.values(venues).forEach(venue=>dot(venue,'#bbebff',3))
+   starts.forEach((at,i)=>dot(at,s.records[i]===undefined?'#ffab9b':'#77b2a4',3))
+   const pulse=s.city.pulse
+   if(pulse)dot(pulseRoutes[pulse.id].stops[pulse.stage],'#64bdff',4)
+   else Object.values(pulseRoutes).forEach(route=>dot(route.start,'#64bdff',2.5))
+  }
   const dest=s.active?sites[s.active.id][s.active.stage]:selected>=0?starts[selected]:null
   if(dest)dot(dest,'#ffef79',5)
   const [x,y]=project(p);map.save();map.translate(x,y);map.rotate(p.heading);map.fillStyle='#bdffac';map.beginPath();map.moveTo(0,-7);map.lineTo(5,5);map.lineTo(0,3);map.lineTo(-5,5);map.fill();map.restore()
@@ -119,18 +290,28 @@ function boot(){
  let tick=0,hudTime=0,saveTime=0,phase=0,npcTime=0,qualityTime=0,slow=0,frames=0
  let eyeDistance=5.5
  function hud(){
+  guide.classList.toggle('in-vehicle',p.driving)
+  const context=!p.driving&&guideMode==='open'?guideNearby(s):undefined
+  if(context&&!metGuidance.has(context)){
+   metGuidance.add(context)
+   speakNova(novaDialogue.reply(s,context))
+  }
   const a=s.active,dest=a?sites[a.id][a.stage]:selected>=0?starts[selected]:undefined,near=nearby()
   el('kicker').textContent=a?'委託　/　'+english[a.id].toUpperCase():'NOVA HARBOUR　/　新港'
   el('title').textContent=a?titles[a.id]:'Moontide 月潮里'
   el('objective').textContent=(a?labels[a.id][a.stage]:selected>=0?'前往 '+titles[selected]:(Object.keys(s.records).length?'行近光環，探索街坊委託。':'試影第一張街影 · 左邊街坊阿晴識路。'))+(dest?'　'+Math.round(distance(p,dest))+' m':'')+(inRace(s)?'　'+a!.elapsed.toFixed(1)+' s':'')
   act.disabled=!near;act.querySelector('span')!.textContent=near?.label||'互動'
+  const pulse=s.city.pulse,stage=pulse&&!inRace(s)?pulseRoutes[pulse.id].stops[pulse.stage]:null
+  el('pulse-objective').hidden=!stage
+  if(stage)el('pulse-objective').textContent='◈ '+stage.label+'　'+Math.round(distance(p,stage))+' m'
   const minutes=Math.floor(1200+s.clock*2)%1440;el('clock').textContent=String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')
   radar()
  }
  hud()
  if(storageNotice)message(storageNotice)
- v.engine.runRenderLoop(()=>{
-  const real=v.engine.getDeltaTime()/1000,dt=Math.min(.065,real)
+ function render(){
+  const real=freshFrame?0:v.engine.getDeltaTime()/1000,dt=Math.min(.065,real)
+  freshFrame=false
   if(document.hidden)return
   const paused=panel.open
   if(!paused){
@@ -146,7 +327,17 @@ function boot(){
   if(!reduced)tick+=dt;v.display.rotation.y=reduced?0:Math.sin(tick)*.45;phase+=Math.abs(p.speed)*dt*2.4
   v.player.root.setEnabled(!p.driving);v.player.root.position.set(p.x,0,p.z);v.player.root.rotation.y=p.heading;v.player.animate(phase,paused?0:Math.min(.85,p.speed*.13))
   cars.forEach((car,i)=>{const driving=p.driving&&(inRace(s)?i===1:i===s.ride);const pos=driving?p:s.cars[i];car.position.set(pos.x,0,pos.z);if(driving)car.rotation.y=p.heading})
-  npcTime+=dt;if(npcTime>.1){npcTime=0;residents.forEach((n,i)=>{const at=npcAt(i,s.clock);n.root.position.set(at.x,0,at.z);n.root.rotation.y=at.heading;n.animate(s.clock*5+i,at.walking?.38:0)})}
+  npcTime+=dt
+  if(npcTime>.1){
+   npcTime=0
+   residents.forEach((resident,i)=>{
+    const at=npcAt(i,s.clock)
+    resident.root.position.set(at.x,0,at.z)
+    const idle=at.walking||reduced?0:Math.sin(s.clock*.9+i)*.16
+    resident.root.rotation.y=at.heading+idle
+    resident.animate(s.clock*5+i,at.walking?.38:0)
+   })
+  }
   traffic.forEach((car,i)=>{const cycle=(s.clock*3+i*48)%144;car.position.set(i?3:-3,0,cycle<72?cycle-36:108-cycle);car.rotation.y=cycle<72?0:Math.PI})
   v.markers.forEach((m,i)=>{m.position.y=1.68+.16*Math.sin(tick*2+i);m.rotation.y=tick*.8;m.setEnabled(!s.active)})
   v.lanterns.forEach((m,i)=>{m.setEnabled(s.active?.id===4&&i>=s.active.stage);m.position.y=1.25+.16*Math.sin(tick*2+i);m.rotation.y=Math.sin(tick+i)*.4})
@@ -154,6 +345,38 @@ function boot(){
   v.target.setEnabled(!!pos);if(pos){v.target.position.set(pos.x,1.55+.18*Math.sin(tick*3),pos.z);v.target.rotation.y=tick}
   const bot=a?.id===1&&a.stage===1?{x:p.x-1.2*Math.sin(p.heading),z:p.z-1.2*Math.cos(p.heading)}:sites[1][0]
   v.bot.position.set(bot.x,.06*Math.sin(tick*3),bot.z);v.bot.rotation.y=a?.id===1?p.heading:tick*.2
+  const pulse=s.city.pulse,stage=pulse&&!inRace(s)?pulseRoutes[pulse.id].stops[pulse.stage]:null
+  v.pulseTarget.setEnabled(!!stage)
+  if(stage){
+   v.pulseTarget.position.set(stage.x,1.84+(reduced?0:Math.sin(tick*2.6)*.12),stage.z)
+   v.pulseTarget.rotation.y=tick
+  }
+  const parcelAt=pulse?.id==='delivery'&&pulse.stage===0?pulseRoutes.delivery.stops[0]:pulseRoutes.delivery.start
+  v.deliveryBot.position.set(parcelAt.x,0,parcelAt.z)
+  v.relayLights.forEach((lamp,i)=>{
+   if(pulse?.id==='energy')lamp.setEnabled(i<pulse.stage||(i===pulse.stage&&(reduced||Math.sin(tick*4)>.05)))
+   else lamp.setEnabled(!!s.city.records.energy?.runs)
+  })
+  const scanAge=s.clock-scanStarted
+  v.scanPulse.setEnabled(scanAge<1.1&&!p.driving)
+  if(v.scanPulse.isEnabled()){
+   const radius=reduced?scanRange:Math.max(.35,scanRange*scanAge/1.1)
+   v.scanPulse.position.set(p.x,.2,p.z)
+   v.scanPulse.scaling.set(radius*2,.2,radius*2)
+   v.scanGlow.alpha=.42*(1-scanAge/1.1)
+  }
+  v.scanMarks.forEach((mark,i)=>{
+   const site=discoveries[i]
+   mark.setEnabled(scanAge<8&&scanSignals.has(site.id)&&!p.driving)
+   if(mark.isEnabled())mark.rotation.y=reduced?0:tick*.7
+  })
+  const novaX=p.x+1.43*Math.cos(yaw)+.85*Math.sin(yaw),novaZ=p.z-1.43*Math.sin(yaw)+.85*Math.cos(yaw)
+  const canFollow=guideMode!=='off'&&!p.driving&&clear(novaX,novaZ,.34)
+  v.nova.setEnabled(canFollow)
+  if(canFollow){
+   v.nova.position.set(novaX,1.43+(reduced?0:Math.sin(tick*2.7)*.09),novaZ)
+   v.nova.rotation.y=yaw+Math.PI
+  }
   v.plazaLight.alpha=s.records[2]!==undefined?1:.48+.12*Math.sin(tick*3)
   const desired=p.driving?7.3:5.3,available=cameraDistance(p,yaw,desired,inRace(s))
   eyeDistance=Math.min(available,eyeDistance+(desired-eyeDistance)*(1-Math.exp(-5*dt)))
@@ -165,8 +388,9 @@ function boot(){
   qualityTime+=real;frames++;if(real>.046)slow++
   if(qualityTime>4&&frames>15){if(slow/frames>.45)v.engine.setHardwareScalingLevel(Math.min(2.4,v.engine.getHardwareScalingLevel()+.25));qualityTime=frames=slow=0}
   v.scene.render()
- })
- window.addEventListener('resize',()=>v.engine.resize())
+ }
+ v.engine.runRenderLoop(render)
+ window.addEventListener('resize',()=>{if(!portal.active)v.engine.resize()})
 }
 async function launch(){try{await document.fonts.load('16px DistrictHK','月潮里');boot()}catch(e){console.error(e);open('未能開啟 3D 城市');para('請使用支援 WebGL 嘅瀏覽器，開啟硬件加速後再試。');button('重新載入',()=>location.reload())}
 

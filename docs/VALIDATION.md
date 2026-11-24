@@ -1,3 +1,57 @@
+# City in Motion
+
+Tested on 25 November 2026 (Hong Kong) using Node 24.22.3 and Chromium 156
+with SwiftShader. The base was `1ab150b`, which includes the merged Task A
+release and its validation record.
+
+| Check | Result |
+| --- | --- |
+| Simulation and production build | All 15 tests passed. TypeScript and Vite built successfully. The static build loaded from a Pages-style subdirectory, including both lazy activity chunks. |
+| PLAYVERSE and NOVA SYNC | Walked to the doorway with Neon Postcards active. Played through the 48-second chart with a controlled browser clock, earned the resonance chip, restarted and exited via Escape. Verified that position, mission time and world clock stayed fixed inside. |
+| Rendering and audio lifecycle | Counted zero city WebGL draw calls and zero new music notes after entering the activity. Game sound effects played when enabled. City draw calls and music resumed on exit. The activity countdown stayed fixed while paused. |
+| Exploration and City ID | Scanned the arcade with Q and the café with touch. Checked the scan log, XP, collectible and personal best after reload. Collapsed and disabled NOVA. Unit coverage found all eight discoveries and confirmed stamps award XP once. |
+| Café and device layouts | Tapped an incorrect order and checked its feedback, then served all five orders and earned the night-shift token in portrait. Started a round and returned using landscape touch controls. Both layouts fit their tested viewports. |
+| City Pulse and residents | Used position fixtures to interact at each delivery and energy stop, reloading between stages. Verified parcel pickup, delivery, incorrect and correct frequencies, progression, and the courier's response. Simulations covered repeat clears and a full scheduled resident day. |
+| Legacy gameplay smoke | Both desktop and touch sessions passed with zero reported browser errors. The run covered keyboard movement, simultaneous touch movement and camera drag, all five commissions, street driving and outfit unlocks. |
+| Save migration | Loaded a legacy version-1 save without the new `city` data. Credits, mission records, wardrobe and discoveries survived activity entry and exit. The foreground commission and city position survived the arcade round. Backup recovery and future-version guards passed. |
+
+## Gameplay captures
+
+The images come from the production build. Café devices are emulated.
+The arcade and café captures use position fixtures to frame the entrances.
+
+| Gameplay | Capture |
+| --- | --- |
+| PLAYVERSE | [Street entrance](screens/city-in-motion/playverse-entrance.jpg) · [NOVA SYNC in play](screens/city-in-motion/nova-sync.jpg) |
+| City Scan and City ID | [World scan](screens/city-in-motion/city-scan.jpg) · [Activity record and collectible](screens/city-in-motion/city-id.jpg) |
+| Moontide Café | [Street entrance](screens/city-in-motion/moontide-cafe-entrance.jpg) · [Portrait](screens/city-in-motion/cafe-portrait.jpg) · [Landscape](screens/city-in-motion/cafe-landscape.jpg) |
+
+## Performance
+
+The main JavaScript entry was 319.47 kB gzip, up from 311.23 kB. NOVA SYNC
+loads 2.82 kB gzip of game code on demand. The café loads 2.84 kB of game
+code and 1.31 kB of styles. The clock module shared by both is 0.36 kB.
+The expanded Hong Kong font subset decreased from 169.66 kB to 135.81 kB
+after switching to WOFF2. Vite still reports the large Babylon entry chunk.
+
+At spawn, the WebGL probe sampled 24 frames per build after eight frames
+at a 416 × 250 render buffer and a 1000 × 600 CSS-pixel viewport. Both
+SwiftShader runs measured a median of 88 draw calls for Task A and 95 for
+City in Motion. The median interval was 183 ms for Task A in both runs
+and 183–208 ms for City in Motion. Time to the first action prompt ranged
+from 4.87 to 7.53 seconds on Task A and 3.09 to 3.24 seconds on City in
+Motion. Startup varies with cache, shader compilation and host load.
+These samples describe software rendering on the test host.
+
+## Qualification limits
+
+Browser qualification used software rendering and emulated touch. Physical
+iOS and Android devices, Safari, hardware frame pacing, and speaker or
+Bluetooth timing remain unverified. Venue and commission fixture checks do
+not cover every walking route. Inspect the Task A gate below for the
+separate continuously driven circuit check. Optional Cantonese speech
+uses a compatible device voice.
+
 # V0.2 Task A final gate
 
 25 November 2026 (Hong Kong). Tested the merged New Horizon release at `449bd7e` using a clean dependency install, node 24.22.3 and Chromium 156 with SwiftShader.

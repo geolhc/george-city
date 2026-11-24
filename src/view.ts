@@ -1,3 +1,4 @@
+import {discoveries,pulseRoutes,venues} from './city-content'
 import {Engine} from '@babylonjs/core/Engines/engine'
 import {Scene} from '@babylonjs/core/scene'
 import {Vector3,Matrix,Quaternion} from '@babylonjs/core/Maths/math.vector'
@@ -214,6 +215,49 @@ export function createView(canvas:HTMLCanvasElement){
   const p=starts[i];staticPart('tube',p.x,.08,p.z,1.7,.16,1.7,wall);staticPart('ring',p.x,.18,p.z,1.6,1,1.6,accents[i%4])
  }
  for(const [p,s] of [[shop,'夜市裁縫'],[garage,'港灣車房']] as const){sign(p.x,2.7,p.z,3,1.1,s,'OPEN ALL NIGHT','#83ffe0')}
+ const arcade=venues.sync
+ box(10.74,1.31,arcade.z,.16,2.62,2.65,glass)
+ for(const offset of [-1.37,1.37]){
+  box(10.55,1.42,arcade.z+offset,.28,2.84,.16,mint)
+  box(10.49,1.16,arcade.z+offset*.65,.21,.82,.12,violet)
+ }
+ box(10.23,2.78,arcade.z,1.12,.15,2.92,violet)
+ box(9.57,.08,arcade.z,2.1,.12,2.55,wall)
+ box(8.63,.15,arcade.z,.11,.045,2.5,mint)
+ sign(9.46,3.53,arcade.z,4.46,1.12,'共振機舖','PLAYVERSE  /  NOVA SYNC','#b0ffe9',Math.PI/2)
+ const cafe=venues.cafe
+ box(-10.79,1.31,cafe.z,.16,2.62,2.72,jade)
+ for(const offset of [-1.36,1.36]){
+  box(-10.56,1.43,cafe.z+offset,.27,2.86,.15,timber)
+  staticPart('sphere',-10.34,2.21,cafe.z+offset,.24,.34,.27,gold)
+ }
+ for(let i=-3;i<=3;i++)box(-10.13,2.82,cafe.z+i*.42,1.36,.17,.42,i%2?porcelain:jade)
+ box(-9.67,.095,cafe.z,2.1,.13,2.72,timber)
+ box(-8.64,.18,cafe.z,.095,.045,2.71,gold)
+ sign(-9.48,3.5,cafe.z,4.9,1.2,'月潮冰室','MOONTIDE CAFÉ  /  OPEN LATE','#ffd28c',-Math.PI/2)
+ const dispatch=pulseRoutes.delivery.start
+ box(dispatch.x-.72,.53,dispatch.z,.78,1.05,1.1,wall)
+ box(dispatch.x-.61,1.08,dispatch.z,.99,.12,1.2,jade)
+ box(dispatch.x-.61,1.84,dispatch.z,.17,.10,1.05,mint)
+ const booth=pulseRoutes.delivery.stops[1]
+ box(booth.x+.55,.68,booth.z,1,1.35,1.34,wall)
+ box(booth.x+.5,1.55,booth.z,1.22,.41,1.52,glass)
+ box(booth.x+.5,1.82,booth.z,1.45,.12,1.74,cream)
+ const station=pulseRoutes.energy.start
+ staticPart('tube',station.x,.45,station.z,.33,.9,.33,jade)
+ staticPart('ring',station.x,1.14,station.z,.75,.75,.75,violet,Math.PI/2)
+ for(const stop of pulseRoutes.energy.stops){
+  staticPart('tube',stop.x,.44,stop.z,.58,.88,.58,wall)
+  staticPart('tube',stop.x,.91,stop.z,.71,.10,.71,jade)
+ }
+ const archive=discoveries.find(site=>site.id==='wind-archive')!
+ box(archive.x,.54,archive.z,.65,1.08,.65,ink)
+ box(archive.x,1.12,archive.z,.76,.18,.64,mint)
+ staticPart('ring',archive.x,1.37,archive.z,.42,.52,.42,mint,Math.PI/2)
+ const spool=discoveries.find(site=>site.id==='lantern-spool')!
+ box(spool.x,.54,spool.z,.7,1.08,.64,wall)
+ for(const y of [1.1,1.43])staticPart('tube',spool.x,y,spool.z,.66,.07,.66,porcelain)
+ staticPart('tube',spool.x,1.26,spool.z,.48,.28,.48,pink)
  for(const {kind,m,values} of batches.values()){
   const mesh=shape(kind,'city',true);mesh.material=m;mesh.thinInstanceSetBuffer('matrix',new Float32Array(values),16,true);mesh.freezeWorldMatrix()
  }
@@ -268,5 +312,42 @@ export function createView(canvas:HTMLCanvasElement){
  const target=new TransformNode('destination',scene);const gem=part(target,'box',0,0,0,.48,.48,.48,gold);gem.rotation.z=Math.PI/4;gem.rotation.x=.6
  const bot=new TransformNode('Ah Luk',scene);part(bot,'box',0,.57,0,.7,.63,.75,cream);part(bot,'box',0,.63,.39,.52,.19,.08,glass)
  for(const s of [-1,1])part(bot,'sphere',s*.24,.23,0,.32,.34,.5,ink)
- return {engine,scene,camera,display,player,person,vehicle,car,racer,markers,lanterns,target,bot,mat,colors:[pink,mint,gold,violet],plazaLight:violet}
+ const pulseBlue=mat('#71bdff',true)
+ const pulseTarget=new TransformNode('City Pulse waypoint',scene)
+ const pulseDiamond=part(pulseTarget,'box',0,0,0,.28,.28,.28,pulseBlue);pulseDiamond.rotation.set(.62,0,Math.PI/4)
+ const pulseOutline=part(pulseTarget,'ring',0,0,0,.78,.78,.78,pulseBlue);pulseOutline.rotation.x=Math.PI/2
+ const relayLights=pulseRoutes.energy.stops.map(stop=>{
+  const light=new TransformNode('energy relay light',scene)
+  light.position.set(stop.x,1.04,stop.z)
+  part(light,'sphere',0,0,0,.35,.27,.35,pulseBlue)
+  return light
+ })
+ const deliveryBot=new TransformNode('dispatch courier',scene)
+ part(deliveryBot,'box',0,.54,0,.58,.56,.65,jade)
+ part(deliveryBot,'box',0,.6,.33,.4,.15,.055,glass)
+ part(deliveryBot,'box',0,.87,0,.48,.12,.45,cream)
+ for(const side of [-1,1]){
+  part(deliveryBot,'sphere',side*.23,.19,0,.23,.29,.39,ink)
+  part(deliveryBot,'sphere',side*.09,.61,.364,.055,.057,.035,mint)
+ }
+ const nova=new TransformNode('NOVA city companion',scene)
+ part(nova,'sphere',0,0,0,.75,.48,.54,porcelain)
+ part(nova,'sphere',0,.055,.22,.54,.29,.24,ink)
+ for(const x of [-.33,.33])part(nova,'sphere',x,-.09,0,.22,.24,.43,jade)
+ for(const x of [-.119,.119])part(nova,'sphere',x,.065,.327,.081,.077,.032,mint)
+ const aerial=part(nova,'box',-.21,.26,-.02,.04,.18,.046,jade);aerial.rotation.z=.31
+ part(nova,'sphere',-.24,.35,-.02,.11,.11,.11,gold)
+ part(nova,'ring',0,-.22,0,.45,.52,.45,mint)
+ const scanGlow=mat('#65ebfb',true)
+ const scanPulse=shape('ring','City Scan pulse')
+ scanPulse.material=scanGlow;scanPulse.setEnabled(false)
+ const scanMarks=discoveries.map(site=>{
+  const mark=new TransformNode('Scan '+site.id,scene),shade=mat(site.color)
+  mark.position.set(site.x,site.y,site.z)
+  const ring=part(mark,'ring',0,0,0,.75,.75,.75,shade);ring.rotation.x=Math.PI/2
+  const core=part(mark,'box',0,0,0,.2,.2,.2,shade);core.rotation.z=Math.PI/4;core.rotation.x=.62
+  mark.setEnabled(false)
+  return mark
+ })
+ return {pulseTarget,relayLights,deliveryBot,nova,scanPulse,scanGlow,scanMarks,engine,scene,camera,display,player,person,vehicle,car,racer,markers,lanterns,target,bot,mat,colors:[pink,mint,gold,violet],plazaLight:violet}
 }
