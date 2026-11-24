@@ -1,14 +1,16 @@
+import {SimulationClock} from './runtime'
+import {load,persist} from './storage'
 import './style.css'
 import {createView,Vector3} from './view'
 import {blocks,starts,sites,titles,english,labels,rewards,outfits,shop,distance,step,cameraDistance,clear,type Point} from './world'
-import {fresh,restore,start,advance,leave,inRace,dismount,citizens,npcAt,authored} from './game'
+import {fresh,boostedVehicle,start,advance,leave,inRace,dismount,citizens,npcAt,authored} from './game'
 import {AudioCity} from './audio'
 const el=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T
 const canvas=el<HTMLCanvasElement>('world'),panel=el<HTMLDialogElement>('panel'),act=el<HTMLButtonElement>('act')
-const audio=new AudioCity(),key='george-city.v1'
-let s=fresh()
-try{s=restore(localStorage.getItem(key))}catch{}
-function save(){try{localStorage.setItem(key,JSON.stringify(s))}catch{}}
+const audio=new AudioCity(),simulation=new SimulationClock()
+let s=fresh(),writable=true,storageNotice=''
+try{const loaded=load(localStorage);s=loaded.state;writable=loaded.writable;storageNotice=loaded.notice}catch{storageNotice='無法儲存進度；本次可繼續遊玩。'}
+function save(){if(!writable)return;try{persist(localStorage,s)}catch{if(!storageNotice){storageNotice='無法儲存進度；請保留此頁。';message(storageNotice)}}}
 function message(text:string,voice=false){el('toast').textContent=text;el('toast').classList.add('show');clearTimeout(timer);timer=window.setTimeout(()=>el('toast').classList.remove('show'),4200);if(voice)audio.say(text)}
 let timer=0
 function open(title:string){panel.querySelector('h2')!.textContent=title;el('content').replaceChildren();if(!panel.open)panel.showModal();resetInput()}
@@ -16,7 +18,7 @@ function para(t:string){const p=document.createElement('p');p.textContent=t;el('
 function button(t:string,fn:()=>void){const b=document.createElement('button');b.textContent=t;b.onclick=fn;el('content').append(b);return b}
 el('close').onclick=()=>panel.close()
 const keys=new Set<string>();let jx=0,jz=0,run=false,stickId=-1,cameraId=-1,lastX=0,yaw=s.player.heading,manual=0
-function resetInput(){keys.clear();jx=jz=0;stickId=cameraId=-1;el('stick').firstElementChild!.setAttribute('style','')}
+function resetInput(){simulation.reset();keys.clear();jx=jz=0;stickId=cameraId=-1;el('stick').firstElementChild!.setAttribute('style','')}
 const stick=el('stick')
 function joystick(e:PointerEvent){const b=stick.getBoundingClientRect(),dx=e.clientX-b.left-b.width/2,dy=e.clientY-b.top-b.height/2,n=Math.max(33,Math.hypot(dx,dy));jx=dx/n;jz=-dy/n;stick.firstElementChild!.setAttribute('style','transform:translate('+jx*33+'px,'+(-jz*33)+'px)')}
 stick.onpointerdown=e=>{stickId=e.pointerId;stick.setPointerCapture(stickId);joystick(e)}
@@ -98,17 +100,21 @@ function boot(){
   radar()
  }
  hud()
+ if(storageNotice)message(storageNotice)
  v.engine.runRenderLoop(()=>{
   const real=v.engine.getDeltaTime()/1000,dt=Math.min(.065,real)
   if(document.hidden)return
   const paused=panel.open
   if(!paused){
+   simulation.advance(real,dt=>{
    s.clock+=dt;if(s.active)s.active.elapsed+=dt
    const cmd={forward:jz+sign('KeyW','ArrowUp')-sign('KeyS','ArrowDown'),side:jx+sign('KeyD','ArrowRight')-sign('KeyA','ArrowLeft'),sprint:run||keys.has('ShiftLeft')||keys.has('ShiftRight')||s.clock<s.teaUntil}
    manual-=dt;if(p.driving&&manual<=0)yaw+=Math.atan2(Math.sin(p.heading-yaw),Math.cos(p.heading-yaw))*(1-Math.exp(-4*dt))
-   for(let left=dt;left>.00001;left-=1/60)step(p,cmd,yaw,Math.min(left,1/60),inRace(s),s.ride===1)
+   step(p,cmd,yaw,dt,inRace(s),boostedVehicle(s))
    if(inRace(s)&&distance(p,sites[3][s.active!.stage])<3)complete()
+   })
   }
+  if(paused)simulation.reset()
   tick+=dt;phase+=Math.abs(p.speed)*dt*2.4
   v.player.root.setEnabled(!p.driving);v.player.root.position.set(p.x,0,p.z);v.player.root.rotation.y=p.heading;v.player.animate(phase,paused?0:Math.min(.85,p.speed*.13))
   cars.forEach((car,i)=>{const driving=p.driving&&(inRace(s)?i===1:i===s.ride);const pos=driving?p:s.cars[i];car.position.set(pos.x,0,pos.z);if(driving)car.rotation.y=p.heading})

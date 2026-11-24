@@ -7,16 +7,30 @@ export interface State {
 }
 export const fresh=():State=>({version:1,player:{x:0,z:-25,heading:0,speed:0,driving:false},clock:0,credits:0,records:{},active:null,outfit:0,discovered:[],talks:{},cars:[{...park},{...garage}],ride:0,teaUntil:0})
 export const inRace=(s:State)=>s.active?.id===3
-export function restore(raw:string|null):State{
+export const boostedVehicle=(s:State)=>inRace(s)||s.ride===1
+export function decode(raw:string|null):State|null{
  try{
   const s=JSON.parse(raw||'null') as State
-  if(!s||s.version!==1||!s.player||!s.records||!s.talks||!Array.isArray(s.discovered)||!Array.isArray(s.cars)||s.cars.length!==2||!Number.isFinite(s.clock)||!Number.isFinite(s.credits))return fresh()
+  if(!s||s.version!==1||!s.player||!s.records||!s.talks||!Array.isArray(s.discovered)||!Array.isArray(s.cars)||s.cars.length!==2||!Number.isFinite(s.clock)||!Number.isFinite(s.credits))return null
   const a=s.active
-  if(a&&(!sites[a.id]||!sites[a.id][a.stage]||!Array.isArray(a.wires)||a.wires.length!==3||!Number.isFinite(a.elapsed)))return fresh()
-  if(!clear(s.player.x,s.player.z,.19,inRace(s))||!Number.isFinite(s.player.heading))return fresh()
+  if(a&&(!sites[a.id]||!sites[a.id][a.stage]||!Array.isArray(a.wires)||a.wires.length!==3||!Number.isFinite(a.elapsed)))return null
+  if(!clear(s.player.x,s.player.z,.19,inRace(s))||!Number.isFinite(s.player.heading))return null
+  const nonnegative=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=0
+  const record=(v:unknown)=>!!v&&typeof v==='object'&&!Array.isArray(v)
+  if((s.active!==null&&!record(s.active))||!Number.isFinite(s.player.x)||!Number.isFinite(s.player.z)||!record(s.records)||!record(s.talks)||!nonnegative(s.clock)||!nonnegative(s.credits)||
+    !Number.isFinite(s.player.speed)||typeof s.player.driving!=='boolean'||
+    ![0,1].includes(s.ride)||!Number.isInteger(s.outfit)||s.outfit<0||s.outfit>5||
+    !nonnegative(s.teaUntil)||!s.discovered.every(v=>typeof v==='string')||
+    !s.cars.every(v=>v&&Number.isFinite(v.x)&&Number.isFinite(v.z)&&clear(v.x,v.z,.19))||
+    !Object.entries(s.records).every(([k,v])=>/^[0-4]$/.test(k)&&nonnegative(v))||
+    !Object.values(s.talks).every(nonnegative)||
+    (a&&(!Number.isInteger(a.id)||!Number.isInteger(a.stage)||!nonnegative(a.elapsed)||
+      !a.wires.every(v=>Number.isInteger(v)&&v>=0&&v<=3)))||
+    (inRace(s)&&!s.player.driving))return null
   return s
- }catch{return fresh()}
+ }catch{return null}
 }
+export const restore=(raw:string|null):State=>decode(raw)??fresh()
 export function start(s:State,id:number){
  if(s.active||!sites[id])return false
  s.active={id,stage:id===3?1:0,elapsed:0,wires:[0,2,0]}
