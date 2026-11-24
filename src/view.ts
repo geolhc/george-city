@@ -1,5 +1,4 @@
 import {Engine} from '@babylonjs/core/Engines/engine'
-import {GlowLayer} from '@babylonjs/core/Layers/glowLayer'
 import {Scene} from '@babylonjs/core/scene'
 import {Vector3,Matrix,Quaternion} from '@babylonjs/core/Maths/math.vector'
 import {Color3,Color4} from '@babylonjs/core/Maths/math.color'
@@ -24,8 +23,6 @@ export function createView(canvas:HTMLCanvasElement){
  camera.minZ=.08;camera.maxZ=330;camera.fov=1.02
  const light=new HemisphericLight('dusk',new Vector3(-.5,1,-.4),scene)
  light.intensity=1.05;light.diffuse=c('#efddff');light.groundColor=c('#53678c')
- const glow=new GlowLayer('sign bloom',scene,{mainTextureRatio:.32,blurKernelSize:24})
- glow.intensity=.37
  const colors=new Map<string,StandardMaterial>()
  function mat(hex:string,lit=false){
   let key=hex+lit,m=colors.get(key)
