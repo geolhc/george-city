@@ -22,6 +22,22 @@ load/unload and spawn contracts when introducing a second district. Keep shared
 progression in State, not renderer objects. Do not add empty networking/AI layers.
 Private rooms eventually require an authoritative backend; Pages remains the client.
 
-Known limits: two-dimensional building collision, decorative traffic, repeated NPC
-identities, no navigation mesh, numeric mission coupling, no cloud saves. Fixed-step
+Known limits: two-dimensional building collision, decorative traffic, four authored residents,
+no navigation mesh, numeric mission coupling, no cloud saves. Fixed-step
 simulation alone is not a claim of deterministic cross-device multiplayer.
+
+
+## Task B integration points inherited from V0.2
+
+| Change area | Existing owner and contract |
+| --- | --- |
+| Street layout and camera | `world.ts` supplies building footprints to movement and camera clearance. Preserve the south-gate spawn, mission coordinates and walking-camera view down the street. |
+| Rendering | `view.ts` builds the Babylon scene. Static details use thin-instance batches keyed by material and shape. Moving rigid parts share mesh sources. The player's recolourable clothing keeps independent materials. |
+| Controls and menus | `main.ts` combines keyboard and captured pointer input. The context button resolves nearby actions. City OS opens map, journal, City ID and settings in the same modal. Opening it clears transient input and pauses simulation. |
+| Identity and progression | `game.ts` owns the serializable state. City ID reads the fictional callsign Tidewalker from UI code, landmark IDs from discoveries and achievements and outfits from mission records. Existing first-clear rewards and replay records remain authoritative locally. |
+| Persistence | `storage.ts` owns the `george-city.v1` key, backup and guarded writes. The optional reduced-motion override uses `george-city.motion` separately and defaults to the system preference. |
+| Delivery | Vite emits project-relative URLs for the static Pages site. PR checks build and exercise the client. Merging to main triggers publication. |
+
+Use the [district and asset guide](NEW-HORIZON.md) for visual conventions. The
+[Task A gate](VALIDATION.md#v02-task-a-final-gate) records the tested baseline
+for reviewing later changes.
