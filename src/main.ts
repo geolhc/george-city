@@ -29,16 +29,44 @@ canvas.onpointermove=e=>{if(e.pointerId===cameraId){yaw+=(e.clientX-lastX)*.008;
 canvas.onlostpointercapture=()=>{cameraId=-1}
 el('sprint').onclick=()=>{run=!run;el('sprint').classList.toggle('on',run)}
 window.addEventListener('blur',()=>{resetInput();save()});document.addEventListener('visibilitychange',()=>{resetInput();save()});window.addEventListener('pagehide',save)
-function soundMenu(){open('街頭電台');para('月潮里 FM · 原創夜行電子樂');button('配樂 '+(audio.music?'開':'關'),()=>{audio.toggleMusic();soundMenu()});button('提示音 '+(audio.fx?'開':'關'),()=>{audio.fx=!audio.fx;audio.chime();soundMenu()});button('廣東話廣播 '+(audio.voice?'開':'關'),()=>{audio.voice=!audio.voice;message('各位街坊，歡迎嚟到月潮里。',true);soundMenu()});para('語音會使用裝置上嘅廣東話聲線。')}
+let reduced=matchMedia('(prefers-reduced-motion: reduce)').matches
+try{const pref=localStorage.getItem('george-city.motion');if(pref!==null)reduced=pref==='reduced'}catch{/* Session preferences still work. */}
+function soundMenu(){open('設定 · Settings');button('減少動態 '+(reduced?'開':'關'),()=>{
+ reduced=!reduced
+ try{localStorage.setItem('george-city.motion',reduced?'reduced':'full')}catch{/* Session only. */}
+ soundMenu()
+});para('月潮里 FM · 原創夜行電子樂');button('配樂 '+(audio.music?'開':'關'),()=>{audio.toggleMusic();soundMenu()});button('提示音 '+(audio.fx?'開':'關'),()=>{audio.fx=!audio.fx;audio.chime();soundMenu()});button('廣東話廣播 '+(audio.voice?'開':'關'),()=>{audio.voice=!audio.voice;message('各位街坊，歡迎嚟到月潮里。',true);soundMenu()});para('語音會使用裝置上嘅廣東話聲線。')}
 el('sound').onclick=soundMenu
 function boot(){
  const v=createView(canvas),p=s.player
- const residents=Array.from({length:8},(_,i)=>v.person(citizens[i%4].color))
+ const residents=Array.from({length:citizens.length},(_,i)=>v.person(citizens[i].color,i+1))
  const cars=[v.car,v.racer],traffic=[v.vehicle('#c8a362'),v.vehicle('#7199ad')]
  const skin=['#df665c','#ff7d71','#af83df','#dfab56','#7dd9b5','#b4cfdf']
  let selected=-1
- function dress(){v.player.torso.material=v.mat(skin[s.outfit]||skin[0])}
+ function dress(){v.player.dress(skin[s.outfit]||skin[0])}
  dress()
+ function cityId(){
+  open('City ID')
+  para('Tidewalker　/　月潮里街坊')
+  para('港幣點數　'+s.credits+'　 ·　委託 '+Object.keys(s.records).length+'/5')
+  const landmarks=['霓虹牌樓','露天戲院','碼頭燈塔']
+  para('城市發現　'+landmarks.filter((_,i)=>s.discovered.includes('landmark-'+i)).join('　'))
+  para('服飾收藏　'+outfits.filter((_,i)=>i===0||s.records[i-1]!==undefined).join('　'))
+  const earned=[s.discovered.length===3?'街影收藏家':'',s.records[3]!==undefined?'午夜車手':'',Object.keys(s.records).length===5?'月潮里街坊':''].filter(Boolean)
+  para('成就　'+(earned.join('　')||'探索地標、完成委託即可獲得'))
+  button('‹ City OS',cityOS)
+ }
+ function cityOS(){
+  open('City OS')
+  para('NOVA HARBOUR　/　新港')
+  button('城市地圖',()=>{open('月潮里 · Map');radar()
+   const chart=document.createElement('canvas');chart.width=chart.height=160;chart.className='district-map'
+   chart.setAttribute('aria-label','月潮里北向地圖');chart.getContext('2d')!.drawImage(el<HTMLCanvasElement>('map'),0,0)
+   el('content').append(chart);para('三角形：你　·　粉紅：委託　·　金色：目的地');button('‹ City OS',cityOS)})
+  button('街坊委託 · Activities',journal)
+  if(s.active)para(titles[s.active.id]+'　/　'+labels[s.active.id][s.active.stage])
+  button('City ID',cityId);button('設定',soundMenu)
+ }
  function journal(){
   open('城市手帳');para('月潮里　·　'+s.credits+' 港幣點數　·　地標 '+s.discovered.length+'/3')
   para('成就　'+(s.discovered.length===3?'街影收藏家　':'')+(s.records[3]!==undefined?'午夜車手　':'')+(Object.keys(s.records).length===5?'月潮里街坊':'已完成 '+Object.keys(s.records).length+'/5 個委託'))
@@ -46,7 +74,7 @@ function boot(){
   if(s.active)button('離開目前委託',()=>{leave(s);save();panel.close()})
   para('WASD／方向鍵移動，Shift 跑，E 互動。手機用左搖桿，右邊拖曳轉鏡頭。駕車時向上加速、向下倒車，左右轉向。')
  }
- el('journal').onclick=journal
+ el('journal').onclick=cityOS
  function tailor(){open('夜市裁縫 · 茶檔');outfits.forEach((n,i)=>{if(!i||s.records[i-1]!==undefined)button((s.outfit===i?'✓ ':'')+n,()=>{s.outfit=i;dress();save();tailor()})});button('凍檸茶　15 點',()=>{if(s.credits<15){para('儲夠 15 點再嚟吖。');return}s.credits-=15;s.teaUntil=s.clock+60;save();panel.close();message('夠晒凍！一分鐘內自動快跑。')})}
  function complete(){const id=s.active?.id;if(id===undefined)return;const first=s.records[id]===undefined,result=advance(s);if(result==='none')return
   audio.chime();if(result==='finish'){selected=-1;message('委託完成！ '+(first?'＋'+rewards[id]+' 點 · 解鎖'+outfits[id+1]:'個人紀錄已更新'),true)}else message(id===1?'阿轆跟住你喇！':'收到！下一站已標示。');save()
@@ -71,7 +99,7 @@ function boot(){
  }
  function action(){if(!panel.open)nearby()?.do()}
  act.onclick=action
- window.onkeydown=e=>{if(panel.open)return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyE'].includes(e.code))e.preventDefault();keys.add(e.code);if(e.repeat)return;if(e.code==='KeyE'||e.code==='Space')action();if(e.code==='KeyM')journal()}
+ window.onkeydown=e=>{if(panel.open)return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyE'].includes(e.code))e.preventDefault();keys.add(e.code);if(e.repeat)return;if(e.code==='KeyE'||e.code==='Space')action();if(e.code==='KeyM')cityOS()}
  window.onkeyup=e=>keys.delete(e.code)
  const map=el<HTMLCanvasElement>('map').getContext('2d')!
  function radar(){
@@ -92,9 +120,9 @@ function boot(){
  let eyeDistance=5.5
  function hud(){
   const a=s.active,dest=a?sites[a.id][a.stage]:selected>=0?starts[selected]:undefined,near=nearby()
-  el('kicker').textContent=a?'委託　/　'+english[a.id].toUpperCase():'DISTRICT 01　/　月潮里'
-  el('title').textContent=a?titles[a.id]:'Moontide Lane'
-  el('objective').textContent=(a?labels[a.id][a.stage]:selected>=0?'前往 '+titles[selected]:'行近發光標記，探索街坊委託。')+(dest?'　'+Math.round(distance(p,dest))+' m':'')+(inRace(s)?'　'+a!.elapsed.toFixed(1)+' s':'')
+  el('kicker').textContent=a?'委託　/　'+english[a.id].toUpperCase():'NOVA HARBOUR　/　新港'
+  el('title').textContent=a?titles[a.id]:'Moontide 月潮里'
+  el('objective').textContent=(a?labels[a.id][a.stage]:selected>=0?'前往 '+titles[selected]:(Object.keys(s.records).length?'行近光環，探索街坊委託。':'試影第一張街影 · 左邊街坊阿晴識路。'))+(dest?'　'+Math.round(distance(p,dest))+' m':'')+(inRace(s)?'　'+a!.elapsed.toFixed(1)+' s':'')
   act.disabled=!near;act.querySelector('span')!.textContent=near?.label||'互動'
   const minutes=Math.floor(1200+s.clock*2)%1440;el('clock').textContent=String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')
   radar()
@@ -115,7 +143,7 @@ function boot(){
    })
   }
   if(paused)simulation.reset()
-  tick+=dt;phase+=Math.abs(p.speed)*dt*2.4
+  if(!reduced)tick+=dt;v.display.rotation.y=reduced?0:Math.sin(tick)*.45;phase+=Math.abs(p.speed)*dt*2.4
   v.player.root.setEnabled(!p.driving);v.player.root.position.set(p.x,0,p.z);v.player.root.rotation.y=p.heading;v.player.animate(phase,paused?0:Math.min(.85,p.speed*.13))
   cars.forEach((car,i)=>{const driving=p.driving&&(inRace(s)?i===1:i===s.ride);const pos=driving?p:s.cars[i];car.position.set(pos.x,0,pos.z);if(driving)car.rotation.y=p.heading})
   npcTime+=dt;if(npcTime>.1){npcTime=0;residents.forEach((n,i)=>{const at=npcAt(i,s.clock);n.root.position.set(at.x,0,at.z);n.root.rotation.y=at.heading;n.animate(s.clock*5+i,at.walking?.38:0)})}
@@ -130,7 +158,7 @@ function boot(){
   const desired=p.driving?7.3:5.3,available=cameraDistance(p,yaw,desired,inRace(s))
   eyeDistance=Math.min(available,eyeDistance+(desired-eyeDistance)*(1-Math.exp(-5*dt)))
   const cx=p.x-Math.sin(yaw)*eyeDistance,cz=p.z-Math.cos(yaw)*eyeDistance
-  v.camera.position.set(cx,1.72+eyeDistance*.29,cz);v.camera.setTarget(new Vector3(p.x+Math.sin(yaw)*1.2,1.35,p.z+Math.cos(yaw)*1.2))
+  v.camera.position.set(cx,1.72+eyeDistance*.29,cz);v.camera.setTarget(new Vector3(p.x+Math.sin(yaw)*1.2,p.driving?1.35:2.64,p.z+Math.cos(yaw)*1.2))
   if(!clear(cx,cz,.08,inRace(s)))v.camera.position.set(p.x,2.2,p.z)
   hudTime+=dt;if(hudTime>.12){hudTime=0;hud()}
   saveTime+=dt;if(saveTime>2){saveTime=0;save()}

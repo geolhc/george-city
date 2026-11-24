@@ -1,5 +1,10 @@
 # Changelog
-## 0.1.1 — foundation (unreleased)
+## 0.2 — New Horizon
+- Rework the south gate with ferry-inspired timber ribs, planted galleries, tea-house windows and a harbour ferry.
+- Add City OS navigation, local City ID, discovery and wardrobe views, and a reduced-motion setting.
+- Retain the version-1 progression contract and five commission routes.
+
+## 0.1.1 — foundation
 - Validate nested version-1 saves, recover previous valid backups and protect future saves.
 - Use bounded 60 Hz simulation steps; preserve ordinary low-FPS elapsed time.
 - Give arcade racing consistent GT performance; clamp mixed-device input.

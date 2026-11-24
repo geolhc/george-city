@@ -7,7 +7,15 @@ const {chromium}=require('playwright')
  await page.goto(process.env.CITY_URL||'http://127.0.0.1:4173');await page.waitForFunction(()=>document.querySelector('#act span')?.textContent==='霓虹街影',{},{timeout:90000})
  await page.waitForTimeout(2500);await page.screenshot({path:mobile?'/tmp/city-mobile.jpg':'dist/moontide-lane.jpg'})
  await page.locator('#act').click();await page.waitForFunction(()=>document.querySelector('#title').textContent==='霓虹街影')
- if(mobile){const client=await page.context().newCDPSession(page),b=await page.locator('#stick').boundingBox();await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:b.x+55,y:b.y+20}]});await page.waitForTimeout(1900);await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})}
+ if(mobile){
+  const client=await page.context().newCDPSession(page),b=await page.locator('#stick').boundingBox()
+  const move={x:b.x+b.width/2,y:b.y+b.height*.18,id:1}
+  await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[move]})
+  await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[move,{x:245,y:390,id:2}]})
+  await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[move,{x:295,y:390,id:2}]})
+  await page.waitForTimeout(1900)
+  await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+ }
  else{await page.keyboard.down('w');await page.waitForTimeout(1900);await page.keyboard.up('w')}
  await page.locator('#journal').click();await page.waitForSelector('#panel[open]');await page.locator('#close').click()
  await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')))
@@ -15,6 +23,15 @@ const {chromium}=require('playwright')
  if(state.player.z<=-24.9||state.active.id!==0)throw Error('movement or mission failed')
  await page.reload();await page.waitForFunction(()=>document.querySelector('#title').textContent==='霓虹街影')
  if(!mobile){
+  // Walk to the first landmark from the resumed session before using fixtures.
+  await page.keyboard.down('a')
+  await page.waitForFunction(()=>{window.dispatchEvent(new Event('pagehide'));return JSON.parse(localStorage.getItem('george-city.v1')).player.x < -6.7})
+  await page.keyboard.up('a')
+  await page.keyboard.down('w')
+  await page.waitForFunction(()=>document.querySelector('#act span').textContent==='影低霓虹牌樓')
+  await page.keyboard.up('w')
+  await page.keyboard.press('e')
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('george-city.v1')).discovered.includes('landmark-0'))
   // Place a fresh fixture at each location; exercise the same UI actions as a player.
   const fixture={...state,active:null,records:{},credits:0,discovered:[]}
   async function arrive(x,z,seed){

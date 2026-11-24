@@ -1,10 +1,14 @@
-# GEORGE CITY — HONG KONG 2099
+# GEORGE CITY 2099
 
-**Your City. Your Story.** A third-person, single-player street adventure set in the fictional neon district of Moontide Lane (月潮里).
+**V0.2 — NEW HORIZON** · The Future Is Yours.
+
+Explore. Play. Connect. Live. Start in **Moontide — 月潮里**, the south-gate market of **Nova Harbour — 新港**. A tramline-era shopping street has grown around a ferry interchange. Its bakers, couriers and projectionists now share the waterfront with delivery robots.
+
+[World and asset guide](docs/NEW-HORIZON.md) · [Gameplay comparisons](docs/NEW-HORIZON.md#gameplay-comparison)
 
 [Play on GitHub Pages](https://geolhc.github.io/george-city/)
 
-Walk forward through the illuminated archway. Press **E** at a floating ring to accept a neighbourhood commission. The gold diamond and north-up radar point to the next objective. Open the city journal to mark another starting point, see personal records or leave a commission. The city opens directly into play.
+Walk forward through the illuminated archway. Press **E** at a floating ring to accept a neighbourhood commission. The gold diamond and north-up radar point to the next objective. Open City OS → 街坊委託 to mark another starting point, see personal records or leave a commission. The city opens directly into play.
 
 | Action | Desktop | Touch |
 | --- | --- | --- |
@@ -47,7 +51,7 @@ PlayCanvas Engine was considered for its entity/component model and editor-orien
 
 All district art, characters, sign designs and musical sequences are original procedural work. Babylon.js is Apache-2.0. Vite, TypeScript and tsx retain their upstream licenses. This prototype requires WebGL and a modern browser. Rendering resolution reduces under sustained frame pressure.
 
-## V0.1.1 foundation (unreleased)
+## Save compatibility and release checks
 See [architecture](docs/ARCHITECTURE.md), [prioritized backlog](docs/ROADMAP.md)
 and [changelog](CHANGELOG.md). Existing version-1 saves remain compatible.
 Valid previous saves are retained as a local backup. Back up browser data before

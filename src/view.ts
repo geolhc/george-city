@@ -9,6 +9,7 @@ import {DynamicTexture} from '@babylonjs/core/Materials/Textures/dynamicTexture'
 import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder'
 import {TransformNode} from '@babylonjs/core/Meshes/transformNode'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
+import '@babylonjs/core/Meshes/instancedMesh'
 import '@babylonjs/core/Materials/Textures/Loaders/tgaTextureLoader'
 import {blocks, starts, sites, park, shop, garage} from './world'
 export {Vector3}
@@ -18,24 +19,24 @@ export function createView(canvas:HTMLCanvasElement){
  engine.setHardwareScalingLevel(Math.max(1,devicePixelRatio/1.4))
  const scene=new Scene(engine)
  scene.clearColor=new Color4(0,0,0,0)
- scene.fogMode=Scene.FOGMODE_EXP2;scene.fogDensity=.009;scene.fogColor=c('#555174')
+ scene.fogMode=Scene.FOGMODE_EXP2;scene.fogDensity=.009;scene.fogColor=c('#647f98')
  const camera=new FreeCamera('follow',new Vector3(0,4,-31),scene)
  camera.minZ=.08;camera.maxZ=330;camera.fov=1.02
  const light=new HemisphericLight('dusk',new Vector3(-.5,1,-.4),scene)
- light.intensity=1.05;light.diffuse=c('#efddff');light.groundColor=c('#53678c')
+ light.intensity=1.05;light.diffuse=c('#fff0dd');light.groundColor=c('#6b8491')
  const colors=new Map<string,StandardMaterial>()
  function mat(hex:string,lit=false){
   let key=hex+lit,m=colors.get(key)
   if(!m){m=new StandardMaterial(key,scene);m.diffuseColor=c(hex);m.emissiveColor=c(hex).scale(lit?.95:.15);m.specularColor=Color3.Black();colors.set(key,m)}
   return m
  }
- const ink=mat('#172338'),wall=mat('#344659'),ledge=mat('#586578'),glass=mat('#19384b'),cream=mat('#ffe0a7',true),pink=mat('#ff416f',true),mint=mat('#54f8da',true),gold=mat('#ffae56',true),violet=mat('#ab85ff',true)
- const accents=[pink,mint,gold,violet]
+ const ink=mat('#172338'),wall=mat('#344659'),ledge=mat('#586578'),glass=mat('#19384b'),cream=mat('#ffe0a7',true),pink=mat('#c66e54',true),mint=mat('#72dcd4',true),gold=mat('#ffae56',true),violet=mat('#ab85ff',true)
+ const accents=[gold,mint,cream,pink]
  type Kind='box'|'sphere'|'tube'|'ring'
- function shape(kind:Kind,name:string){
-  if(kind==='sphere')return MeshBuilder.CreateSphere(name,{diameter:1,segments:10},scene)
+ function shape(kind:Kind,name:string,staticBatch=false){
+  if(kind==='sphere')return MeshBuilder.CreateSphere(name,{diameter:1,segments:staticBatch?4:8},scene)
   if(kind==='tube')return MeshBuilder.CreateCylinder(name,{height:1,diameter:1,tessellation:16},scene)
-  if(kind==='ring')return MeshBuilder.CreateTorus(name,{diameter:1,thickness:.055,tessellation:48},scene)
+  if(kind==='ring')return MeshBuilder.CreateTorus(name,{diameter:1,thickness:.055,tessellation:28},scene)
   return MeshBuilder.CreateBox(name,{size:1},scene)
  }
  const batches=new Map<string,{kind:Kind;m:StandardMaterial;values:number[]}>()
@@ -46,8 +47,17 @@ export function createView(canvas:HTMLCanvasElement){
   a.values.push(...Matrix.Compose(new Vector3(w,h,d),Quaternion.FromEulerAngles(rx,ry,rz),new Vector3(x,y,z)).asArray())
  }
  const box=(x:number,y:number,z:number,w:number,h:number,d:number,m:StandardMaterial)=>staticPart('box',x,y,z,w,h,d,m)
- function part(parent:TransformNode,kind:Kind,x:number,y:number,z:number,w:number,h:number,d:number,m:StandardMaterial){
-  const mesh=shape(kind,'detail');mesh.material=m;mesh.parent=parent;mesh.position.set(x,y,z);mesh.scaling.set(w,h,d);return mesh
+ // Moving rigid details share geometry and material; outfit pieces keep independent materials.
+ const sources=new Map<string,ReturnType<typeof shape>>()
+ function part(parent:TransformNode,kind:Kind,x:number,y:number,z:number,w:number,h:number,d:number,m:StandardMaterial,wearable=false){
+  const key=kind+m.uniqueId
+  let source=sources.get(key)
+  if(!source||wearable){
+   source=shape(kind,'detail');source.material=m
+   if(!wearable){source.isVisible=false;sources.set(key,source)}
+  }
+  const mesh=wearable?source:source.createInstance('detail instance')
+  mesh.parent=parent;mesh.position.set(x,y,z);mesh.scaling.set(w,h,d);return mesh
  }
  let seed=2099
  function random(){seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296}
@@ -78,11 +88,11 @@ export function createView(canvas:HTMLCanvasElement){
  box(0,-.36,0,62,.65,98,mat('#32354b'))
  const asphalt=mat('#495167')
  const street=new DynamicTexture('rain-polished carriageway',{width:512,height:1024},scene,false),ctx=street.getContext()
- ctx.fillStyle='#65707e';ctx.fillRect(0,0,512,1024)
+ ctx.fillStyle='#414f61';ctx.fillRect(0,0,512,1024)
  for(let i=0;i<12000;i++){
   const x=random()*512,y=random()*1024
   ctx.fillStyle=random()<.55?'#495367':'#808898'
-  ctx.fillRect(x,y,.8+random()*2,.6+random()*2.5)
+  ctx.fillRect(x,y,.35+random(),.3+random()*.7)
  }
  for(let i=0;i<1150;i++){
   const side=random()<.5,x=side?random()*88:424+random()*88
@@ -109,9 +119,53 @@ export function createView(canvas:HTMLCanvasElement){
   const sx=front-s*1.5,sz=b.z-4;box(sx,8,sz,2,.18,.22,ledge);sign(sx,6.4,sz-.16,1.55,5.5,names[i],roman[i],'#ffbf81',0,true)
   box(front-s*.9,.16,b.z+4,.55,.32,.8,wall)
  })
+ // South gate tea houses: projecting timber bays, pleated canvas and lit interiors.
+ const timber=mat('#a67550'),leaf=mat('#527b5a'),jade=mat('#376d69'),porcelain=mat('#d3d6bd')
+ for(const side of [-1,1]){
+  const face=side*10.9
+  for(const z of [-21,-17,-13]){
+   box(face,1.54,z,.28,2.6,3.62,mat('#694f41'))
+   box(face-side*.18,2.51,z,.08,.12,3.48,cream)
+   box(face-side*.22,.53,z,.18,.85,3.61,jade)
+   for(const dz of [-1.08,0,1.08]){
+    staticPart('sphere',face-side*.28,2.16,z+dz,.33,.42,.33,gold)
+    staticPart('tube',face-side*.46,1.05,z+dz,.43,.35,.43,porcelain)
+   }
+   for(let k=-3;k<=3;k+=2)box(face-side*.24,1.6,z+k*.5,.18,2.7,.068,timber)
+   box(face-side*.32,.71,z,.66,.22,3.68,timber)
+   for(let k=0;k<8;k++)staticPart('box',face-side*1.18,3.15,z-1.7+k*.48,2.45,.14,.49,k%2?porcelain:jade,0,0,side*.13)
+   box(face-side*1.8,5.9,z,3.2,.22,3.95,ledge)
+   box(face-side*2.9,6.28,z,.46,.6,3.65,porcelain)
+   for(let k=-2;k<=2;k++)staticPart('sphere',face-side*2.95,6.73,z+k*.64,.8,.62,.95,leaf)
+  }
+ }
+ // Ribs rise toward both eaves like a pair of folded ferry sails.
+ for(let i=-14;i<=14;i++){
+  const x=i*.68,rise=Math.pow(Math.abs(i)/14,2)*2.5
+  staticPart('box',x,8.15+rise,-12,.38,.3,3.9,timber,-.09,0,i*.018)
+  box(x,8.37+rise,-14.02,.39,.08,.15,cream)
+ }
+ // A pearl crescent crowns the roofline, with a warm offset inner disc.
+ staticPart('tube',0,9.55,-12,2.85,.24,2.85,cream,Math.PI/2)
+ staticPart('tube',.32,9.94,-12.16,2.29,.14,2.29,jade,Math.PI/2)
+ for(const x of [-1,1])for(let j=0;j<3;j++)box(x*(3.4+j*.26),8.85-j*.21,-12,3.4,.10,.25,j===0?cream:jade)
+ // Planted roof terraces break up the neighbourhood silhouette.
+ for(const b of blocks){
+  for(const offset of [-3,3]){
+   box(b.x+offset,b.h+2.16,b.z,1.65,.45,6,porcelain)
+   for(const dz of [-2,0,2])staticPart('sphere',b.x+offset,b.h+2.85,b.z+dz,1.65,1.6,2.4,leaf)
+  }
+ }
+ // Beyond the pier, a ferry and its broken reflection sit outside the walkable quay.
+ box(0,-.56,79,86,.4,60,mat('#396779'))
+ staticPart('sphere',-7,.36,55,13,1.6,4.6,jade)
+ box(-7,1.55,55,10,1.45,3.9,porcelain)
+ for(let i=-4;i<=4;i++)box(-7+i,1.62,52.99,.67,.72,.15,glass)
+ box(-7,2.4,55,11,.25,4.6,timber)
+ for(let i=0;i<15;i++)box(-12+i*.8,-.32,51-i%3,.44,.04,.16,i%3?jade:cream)
  for(let i=0;i<95;i++){
   let x=(random()-.5)*200,z=(random()-.5)*200
-  if(Math.abs(x)<32&&Math.abs(z)<51||x>60&&x<100&&Math.abs(z)<28)continue
+  if((z>45&&Math.abs(x)<18)||Math.abs(x)<32&&Math.abs(z)<51||x>60&&x<100&&Math.abs(z)<28)continue
   const h=12+random()*50,w=5+random()*8
   box(x,h/2,z,w,h,w,facades[i%3]);box(x,h+1,z,w*.82,2,w*.82,wall);if(i%3===0){box(x,h+4,z,.22,8,.22,ledge);box(x,h+8,z,.4,.4,.4,pink)}
  }
@@ -131,7 +185,7 @@ export function createView(canvas:HTMLCanvasElement){
    staticPart('sphere',s*5.3,5.4,z,1,1.25,1,pink);box(s*5.3,4.65,z,.11,.32,.11,gold)
   }
   box(0,7.25,z,17.2,.5,1.1,ink);box(0,7.65,z,19,.26,1.5,mint);box(0,7.91,z,15,.17,1.1,wall)
-  sign(0,6.6,z-.58,6.4,1.75,z<0?'月潮里':'星光碼頭',z<0?'MOONTIDE LANE':'STARLIGHT PIER','#ffd69b')
+  sign(0,6.6,z-.58,6.4,1.75,z<0?'月潮里':'星光碼頭',z<0?'NOVA HARBOUR    /    MOONTIDE':'STARLIGHT PIER','#ffd69b')
  }
  for(let z=-40;z<46;z+=10)for(const s of [-1,1]){
   box(s*6.6,2.2,z,.13,4.4,.13,ledge);box(s*6.35,4.35,z,.7,.1,.3,cream)
@@ -161,13 +215,16 @@ export function createView(canvas:HTMLCanvasElement){
  }
  for(const [p,s] of [[shop,'夜市裁縫'],[garage,'港灣車房']] as const){sign(p.x,2.7,p.z,3,1.1,s,'OPEN ALL NIGHT','#83ffe0')}
  for(const {kind,m,values} of batches.values()){
-  const mesh=shape(kind,'city');mesh.material=m;mesh.thinInstanceSetBuffer('matrix',new Float32Array(values),16,true);mesh.freezeWorldMatrix()
+  const mesh=shape(kind,'city',true);mesh.material=m;mesh.thinInstanceSetBuffer('matrix',new Float32Array(values),16,true);mesh.freezeWorldMatrix()
  }
- function person(color:string){
+ function person(color:string,variant=0){
   const root=new TransformNode('walker',scene),jacket=mat(color)
   part(root,'sphere',0,.025,0,.78,.032,.52,mat('#252c3a'))
   part(root,'box',0,.87,0,.5,.15,.34,ink)
-  const torso=part(root,'box',0,1.12,0,.64,.65,.38,jacket)
+  const torso=part(root,'sphere',0,1.12,0,.64,.76,.42,jacket,variant===0)
+  root.scaling.setAll([1,.94,1.06,.98][variant%4]);
+  if(variant%2)part(root,'tube',0,1.96,.045,.52,.11,.54,jacket)
+  if(variant%3===1)part(root,'sphere',0,.91,0,.66,.36,.47,jacket)
   for(const side of [-1,1]){
    const strap=part(root,'box',side*.22,1.19,-.21,.08,.51,.08,ink);strap.rotation.z=side*.12
    part(root,'box',side*.28,1.33,-.21,.12,.06,.06,cream)
@@ -178,18 +235,24 @@ export function createView(canvas:HTMLCanvasElement){
   for(const side of [-1,1])part(root,'box',side*.205,1.74,.045,.065,.12,.14,ink)
   const limbs=[-1,1].map(s=>{
    const leg=new TransformNode('hip',scene);leg.parent=root;leg.position.set(s*.16,.85,0);part(leg,'box',0,-.32,0,.22,.63,.25,ink);part(leg,'box',0,-.72,.06,.24,.17,.36,mat('#b7cbd0'))
-   const arm=new TransformNode('shoulder',scene);arm.parent=root;arm.position.set(s*.38,1.38,0);part(arm,'box',0,-.19,0,.21,.4,.24,jacket);part(arm,'box',0,-.47,0,.17,.22,.18,mat('#cd997f'))
-   return {leg,arm}
+   const arm=new TransformNode('shoulder',scene);arm.parent=root;arm.position.set(s*.38,1.38,0);const sleeve=part(arm,'sphere',0,-.19,0,.21,.4,.24,jacket,variant===0);part(arm,'box',0,-.47,0,.17,.22,.18,mat('#cd997f'))
+   return {leg,arm,sleeve}
   })
-  return {root,torso,animate(t:number,amp:number){limbs.forEach(({leg,arm},i)=>{leg.rotation.x=Math.sin(t+i*Math.PI)*amp;arm.rotation.x=-leg.rotation.x*.75});torso.position.y=1.12+Math.abs(Math.sin(t))*.04*amp}}
+  let stride=0
+  return {root,dress(hex:string){torso.material=mat(hex);limbs.forEach(l=>l.sleeve.material=mat(hex))},animate(t:number,amp:number){stride+=(amp-stride)*.4;amp=stride;limbs.forEach(({leg,arm},i)=>{leg.rotation.x=Math.sin(t+i*Math.PI)*amp;arm.rotation.x=-leg.rotation.x*.75});torso.position.y=1.12+Math.abs(Math.sin(t))*.04*amp}}
  }
  function vehicle(color:string){
   const root=new TransformNode('street coupe',scene),paint=mat(color)
-  part(root,'box',0,.58,0,1.7,.44,3.1,paint);part(root,'sphere',0,.94,-.13,1.55,.76,2.05,glass)
+  part(root,'sphere',0,.58,0,1.9,.65,3.7,paint);part(root,'sphere',0,.94,-.13,1.55,.76,2.05,glass)
   part(root,'box',0,1.27,-.18,1.07,.1,1,paint);part(root,'box',0,.65,1.57,1.47,.1,.07,mint);part(root,'box',0,.62,-1.57,1.48,.1,.07,pink)
   for(const s of [-1,1])for(const z of [-.99,.99]){const wheel=part(root,'tube',s*.82,.36,z,.61,.16,.61,ink);wheel.rotation.z=Math.PI/2;part(root,'sphere',s*.91,.36,z,.07,.29,.29,cream)}
   return root
  }
+ const display=new TransformNode('south gate route beacon',scene)
+ display.position.set(5.7,2.95,-18)
+ const halo=part(display,'ring',0,0,0,.9,.9,.9,mint)
+ halo.rotation.x=Math.PI/2
+ sign(5.7,2.12,-18,1.95,.73,'碼頭','PIER  /  NORTH','#a9fff2')
  const player=person('#db655c'),car=vehicle('#cf515e');car.position.set(park.x,0,park.z)
  const racer=vehicle('#49adac');racer.position.set(garage.x,0,garage.z)
  const markers=starts.map((p,i)=>{const node=new TransformNode('signal',scene);node.position.set(p.x,1.6,p.z);const ring=part(node,'ring',0,0,0,.8,.8,.8,accents[i%4]);ring.rotation.x=Math.PI/2;return node})
@@ -205,5 +268,5 @@ export function createView(canvas:HTMLCanvasElement){
  const target=new TransformNode('destination',scene);const gem=part(target,'box',0,0,0,.48,.48,.48,gold);gem.rotation.z=Math.PI/4;gem.rotation.x=.6
  const bot=new TransformNode('Ah Luk',scene);part(bot,'box',0,.57,0,.7,.63,.75,cream);part(bot,'box',0,.63,.39,.52,.19,.08,glass)
  for(const s of [-1,1])part(bot,'sphere',s*.24,.23,0,.32,.34,.5,ink)
- return {engine,scene,camera,player,person,vehicle,car,racer,markers,lanterns,target,bot,mat,colors:[pink,mint,gold,violet],plazaLight:violet}
+ return {engine,scene,camera,display,player,person,vehicle,car,racer,markers,lanterns,target,bot,mat,colors:[pink,mint,gold,violet],plazaLight:violet}
 }
