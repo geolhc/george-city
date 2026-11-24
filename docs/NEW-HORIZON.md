@@ -42,6 +42,15 @@ Fresh saves at the south gate, default camera, Chromium with SwiftShader. Moving
 
 The merged foundation at f81ca3d passed its main build. Its PR runner failed installing Playwright FFmpeg on Ubuntu 26.04. The V0.2 PR workflow pins Ubuntu 24.04. Local npm ci, eight simulation tests, strict TypeScript and the production Vite build passed.
 
-The main entry grew from 309.52 to 311.12 kB gzip. Vite still flags the Babylon entry chunk. The new street furniture, roof and ferry use the existing static instance batches. Four distinct authored residents replace eight walkers that repeated the same four identities. Adaptive resolution remains active. No physical device or hardware GPU measurements are available.
+The main entry grew from 309.52 to 311.23 kB gzip. Vite still flags the Babylon entry chunk. The new street furniture, roof and ferry use the existing static instance batches. Four distinct authored residents replace eight walkers that repeated the same four identities. Adaptive resolution remains active. No physical device or hardware GPU measurements are available.
 
-The local ID uses the fictional callsign Tidewalker and reads the current version-1 save. Motion preference is stored separately. Traffic remains decorative. Camera clearance covers building footprints; overhanging trim is visual geometry. Full race traversal and thermal behaviour on phones remain qualification gaps.
+The local ID uses the fictional callsign Tidewalker and reads the current version-1 save. Motion preference is stored separately. Traffic remains decorative. Camera clearance covers building footprints; overhanging trim is visual geometry. Physical touch comfort, hardware frame pacing and thermal behaviour on phones remain qualification gaps.
+
+
+### Gameplay qualification
+
+Production Chromium smoke coverage includes keyboard travel from spawn to the first postcard, mission resumption after reload, simultaneous touch joystick and drag-to-look input, all five mission completions, puzzle relays, the garage, first-clear rewards and outfit changes. The all-commission test seeds positions between objectives. An additional browser run started at the arcade entrance and drove the circuit continuously using throttle and steering keyboard events. It crossed all four required gates, returned to the street and awarded 150 credits. This verifies the route and reward with automated steering.
+
+All three viewport sessions opened City OS, inspected the local identity and started Neon Postcards. Screenshot review prompted a higher walking-camera sightline so the new gate roof reads from spawn and separate lamp, counter and mullion geometry so the tea-house windows have depth.
+
+Profiling first found a frame-time regression on SwiftShader. Moving parts now share Babylon mesh instances by shape and material, except the player’s recolourable outfit. At the same 416-pixel render-buffer width, a 45-frame spawn sample after 15 warm-up frames counted 303 median WebGL draw calls on the foundation and 88 after batching. The gate silhouette and small marker rings also use fewer segments. Draw-call counts describe renderer workload; software timings vary with host load.

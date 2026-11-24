@@ -9,6 +9,7 @@ import {DynamicTexture} from '@babylonjs/core/Materials/Textures/dynamicTexture'
 import {MeshBuilder} from '@babylonjs/core/Meshes/meshBuilder'
 import {TransformNode} from '@babylonjs/core/Meshes/transformNode'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
+import '@babylonjs/core/Meshes/instancedMesh'
 import '@babylonjs/core/Materials/Textures/Loaders/tgaTextureLoader'
 import {blocks, starts, sites, park, shop, garage} from './world'
 export {Vector3}
@@ -32,10 +33,10 @@ export function createView(canvas:HTMLCanvasElement){
  const ink=mat('#172338'),wall=mat('#344659'),ledge=mat('#586578'),glass=mat('#19384b'),cream=mat('#ffe0a7',true),pink=mat('#c66e54',true),mint=mat('#72dcd4',true),gold=mat('#ffae56',true),violet=mat('#ab85ff',true)
  const accents=[gold,mint,cream,pink]
  type Kind='box'|'sphere'|'tube'|'ring'
- function shape(kind:Kind,name:string){
-  if(kind==='sphere')return MeshBuilder.CreateSphere(name,{diameter:1,segments:10},scene)
+ function shape(kind:Kind,name:string,staticBatch=false){
+  if(kind==='sphere')return MeshBuilder.CreateSphere(name,{diameter:1,segments:staticBatch?4:8},scene)
   if(kind==='tube')return MeshBuilder.CreateCylinder(name,{height:1,diameter:1,tessellation:16},scene)
-  if(kind==='ring')return MeshBuilder.CreateTorus(name,{diameter:1,thickness:.055,tessellation:48},scene)
+  if(kind==='ring')return MeshBuilder.CreateTorus(name,{diameter:1,thickness:.055,tessellation:28},scene)
   return MeshBuilder.CreateBox(name,{size:1},scene)
  }
  const batches=new Map<string,{kind:Kind;m:StandardMaterial;values:number[]}>()
@@ -46,8 +47,17 @@ export function createView(canvas:HTMLCanvasElement){
   a.values.push(...Matrix.Compose(new Vector3(w,h,d),Quaternion.FromEulerAngles(rx,ry,rz),new Vector3(x,y,z)).asArray())
  }
  const box=(x:number,y:number,z:number,w:number,h:number,d:number,m:StandardMaterial)=>staticPart('box',x,y,z,w,h,d,m)
- function part(parent:TransformNode,kind:Kind,x:number,y:number,z:number,w:number,h:number,d:number,m:StandardMaterial){
-  const mesh=shape(kind,'detail');mesh.material=m;mesh.parent=parent;mesh.position.set(x,y,z);mesh.scaling.set(w,h,d);return mesh
+ // Moving rigid details share geometry and material; outfit pieces keep independent materials.
+ const sources=new Map<string,ReturnType<typeof shape>>()
+ function part(parent:TransformNode,kind:Kind,x:number,y:number,z:number,w:number,h:number,d:number,m:StandardMaterial,wearable=false){
+  const key=kind+m.uniqueId
+  let source=sources.get(key)
+  if(!source||wearable){
+   source=shape(kind,'detail');source.material=m
+   if(!wearable){source.isVisible=false;sources.set(key,source)}
+  }
+  const mesh=wearable?source:source.createInstance('detail instance')
+  mesh.parent=parent;mesh.position.set(x,y,z);mesh.scaling.set(w,h,d);return mesh
  }
  let seed=2099
  function random(){seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296}
@@ -205,13 +215,13 @@ export function createView(canvas:HTMLCanvasElement){
  }
  for(const [p,s] of [[shop,'夜市裁縫'],[garage,'港灣車房']] as const){sign(p.x,2.7,p.z,3,1.1,s,'OPEN ALL NIGHT','#83ffe0')}
  for(const {kind,m,values} of batches.values()){
-  const mesh=shape(kind,'city');mesh.material=m;mesh.thinInstanceSetBuffer('matrix',new Float32Array(values),16,true);mesh.freezeWorldMatrix()
+  const mesh=shape(kind,'city',true);mesh.material=m;mesh.thinInstanceSetBuffer('matrix',new Float32Array(values),16,true);mesh.freezeWorldMatrix()
  }
  function person(color:string,variant=0){
   const root=new TransformNode('walker',scene),jacket=mat(color)
   part(root,'sphere',0,.025,0,.78,.032,.52,mat('#252c3a'))
   part(root,'box',0,.87,0,.5,.15,.34,ink)
-  const torso=part(root,'sphere',0,1.12,0,.64,.76,.42,jacket)
+  const torso=part(root,'sphere',0,1.12,0,.64,.76,.42,jacket,variant===0)
   root.scaling.setAll([1,.94,1.06,.98][variant%4]);
   if(variant%2)part(root,'tube',0,1.96,.045,.52,.11,.54,jacket)
   if(variant%3===1)part(root,'sphere',0,.91,0,.66,.36,.47,jacket)
@@ -225,7 +235,7 @@ export function createView(canvas:HTMLCanvasElement){
   for(const side of [-1,1])part(root,'box',side*.205,1.74,.045,.065,.12,.14,ink)
   const limbs=[-1,1].map(s=>{
    const leg=new TransformNode('hip',scene);leg.parent=root;leg.position.set(s*.16,.85,0);part(leg,'box',0,-.32,0,.22,.63,.25,ink);part(leg,'box',0,-.72,.06,.24,.17,.36,mat('#b7cbd0'))
-   const arm=new TransformNode('shoulder',scene);arm.parent=root;arm.position.set(s*.38,1.38,0);const sleeve=part(arm,'sphere',0,-.19,0,.21,.4,.24,jacket);part(arm,'box',0,-.47,0,.17,.22,.18,mat('#cd997f'))
+   const arm=new TransformNode('shoulder',scene);arm.parent=root;arm.position.set(s*.38,1.38,0);const sleeve=part(arm,'sphere',0,-.19,0,.21,.4,.24,jacket,variant===0);part(arm,'box',0,-.47,0,.17,.22,.18,mat('#cd997f'))
    return {leg,arm,sleeve}
   })
   let stride=0
