@@ -15,3 +15,17 @@ Future activities need explicit entry, cancellation, reward and return semantics
 Future districts need resource disposal and shared collision definitions.
 Servers must authorize shared rewards; AI dialogue needs authored fallbacks.
 Do not place service credentials in browser code.
+
+## Task B baseline
+
+Build on the merged V0.2 south gate in Moontide (月潮里), Nova Harbour (新港).
+Use GEORGE CITY 2099 and “The Future Is Yours.” for player-facing branding.
+Use the playable south gate as the reference for sightlines, amber shop lighting,
+cyan wayfinding, bilingual signs and planted galleries. Keep interaction prompts
+and the compact HUD legible in portrait and landscape.
+
+Keep City ID local and derive its achievements, discoveries and wardrobe from
+the existing save. Route map, journal, activity and settings views through City OS.
+Keep static architecture batched and share geometry for repeated moving parts.
+See [architecture](docs/ARCHITECTURE.md) and the [art guide](docs/NEW-HORIZON.md).
+The district atlas records concepts. Task B feature scope requires its own brief.

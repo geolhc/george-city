@@ -1,4 +1,7 @@
-# Audit-driven priorities and V0.2 backlog
+# Foundation audit and historical V0.2 backlog
+
+This backlog predates New Horizon. See the [merged Task A design](NEW-HORIZON.md) and [Task A quality gate](VALIDATION.md#v02-task-a-final-gate) for the current baseline. Future district and activity entries are proposals.
+
 Priorities use the foundation request's definitions, replacing the earlier audit scale.
 P0: malformed saves can crash journal/driving — addressed with nested validation,
 backup recovery and future-version protection. No verified security incident.
