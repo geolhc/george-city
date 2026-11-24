@@ -18,3 +18,4 @@ jobs:
       - run: |
           python3 -m http.server 4173 -d dist &
           node scripts/smoke.cjs
+          node --import tsx scripts/city-in-motion.cjs

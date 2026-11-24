@@ -1,4 +1,12 @@
 # Changelog
+
+## 0.2 — City in Motion
+- Open PLAYVERSE and Moontide Café in Moontide. Play a 48-second NOVA SYNC round or serve five Cantonese café orders.
+- Add the NOVA guide, eight City Scan stories and two replayable City Pulse jobs.
+- Record City XP, discovery stamps, activity completions, personal bests and fixed collectibles in City ID.
+- Pause street rendering and music inside activities. Keep existing version-1 saves compatible.
+- Give the four residents distinct daily sidewalk routes and dialogue that reacts to City in Motion progress.
+
 ## 0.2 — New Horizon
 - Rework the south gate with ferry-inspired timber ribs, planted galleries, tea-house windows and a harbour ferry.
 - Add City OS navigation, local City ID, discovery and wardrobe views, and a reduced-motion setting.

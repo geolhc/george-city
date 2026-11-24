@@ -19,14 +19,14 @@ All new storefronts, ferry, roof structures, paint schemes, clothing and signs a
 | District | Direction |
 | --- | --- |
 | Moontide | Hong Kong-inspired harbour culture, commissions and street life. Playable now. |
-| Playverse | Neighbourhood arcades and mini-games with explicit entry, rewards and return. |
+| Playverse | A small arcade outpost in Moontide now hosts NOVA SYNC. A larger district remains a concept. |
 | Velocity Zone | Futuristic mobility and closed-course racing. |
 | Sky Habitat | Personal homes and daily life above the street. |
 | Nexus Central | Invite-only social and multiplayer experiences. |
 | Synth District | Intelligent residents and interactive stories. |
 | Horizon Terminal | Travel between future cities. |
 
-The last six entries are planning concepts. Use the existing dialogue provider and input command boundary for future extensions. Define district loading and disposal when a second playable district exists.
+The larger districts remain planning concepts. Use the existing dialogue provider and input command boundary for future extensions. Define district loading and disposal when a second playable district exists.
 
 ### Gameplay comparison
 

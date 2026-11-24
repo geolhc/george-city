@@ -28,4 +28,17 @@ Keep City ID local and derive its achievements, discoveries and wardrobe from
 the existing save. Route map, journal, activity and settings views through City OS.
 Keep static architecture batched and share geometry for repeated moving parts.
 See [architecture](docs/ARCHITECTURE.md) and the [art guide](docs/NEW-HORIZON.md).
-The district atlas records concepts. Task B feature scope requires its own brief.
+The district atlas records the direction for future neighbourhoods.
+
+## City in Motion
+
+Register a lazy loader in `src/activities/portal.ts` and supply an accessible
+street entrance. Start each round with `beginAttempt()`, report one final score
+and release clocks and input handlers on dispose. Preserve the city snapshot
+on entry, abort, completion and exit. Pause rounds when the browser loses focus.
+Keep activity scores and event rewards local. Keep City Scan IDs and activity
+IDs stable because City ID reads them from saves.
+
+Run `node --import tsx scripts/city-in-motion.cjs` against the settled production
+build after changing portal flow, scans, event stages or activities. Review
+portrait and landscape captures whenever controls or layout change.
