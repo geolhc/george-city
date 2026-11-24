@@ -1,4 +1,5 @@
 import {Engine} from '@babylonjs/core/Engines/engine'
+import {GlowLayer} from '@babylonjs/core/Layers/glowLayer'
 import {Scene} from '@babylonjs/core/scene'
 import {Vector3,Matrix,Quaternion} from '@babylonjs/core/Maths/math.vector'
 import {Color3,Color4} from '@babylonjs/core/Maths/math.color'
@@ -23,6 +24,8 @@ export function createView(canvas:HTMLCanvasElement){
  camera.minZ=.08;camera.maxZ=330;camera.fov=1.02
  const light=new HemisphericLight('dusk',new Vector3(-.5,1,-.4),scene)
  light.intensity=1.05;light.diffuse=c('#efddff');light.groundColor=c('#53678c')
+ const glow=new GlowLayer('sign bloom',scene,{mainTextureRatio:.32,blurKernelSize:24})
+ glow.intensity=.37
  const colors=new Map<string,StandardMaterial>()
  function mat(hex:string,lit=false){
   let key=hex+lit,m=colors.get(key)
@@ -70,13 +73,27 @@ export function createView(canvas:HTMLCanvasElement){
   const {width:W,height:H}=tex.getSize()
   g.fillStyle='#142233';g.fillRect(0,0,W,H);g.strokeStyle=color;g.lineWidth=7;g.strokeRect(8,8,W-16,H-16);g.textAlign='center';g.fillStyle=color
   g.shadowColor=color;g.shadowBlur=6
-  if(vertical){g.font='bold 101px sans-serif';[...cn].forEach((v,j)=>g.fillText(v,W/2,112+j*(H-95)/cn.length))}
-  else{g.font='bold 90px sans-serif';g.fillText(cn,W/2,111,W-40);g.shadowBlur=0;g.font='600 24px monospace';g.fillText(en,W/2,155,W-46)}
+  if(vertical){g.font='bold 101px DistrictHK, sans-serif';[...cn].forEach((v,j)=>g.fillText(v,W/2,112+j*(H-95)/cn.length))}
+  else{g.font='bold 90px DistrictHK, sans-serif';g.fillText(cn,W/2,111,W-40);g.shadowBlur=0;g.font='600 24px monospace';g.fillText(en,W/2,155,W-46)}
   tex.update();const m=new StandardMaterial('sign '+en,scene);m.diffuseTexture=tex;m.emissiveTexture=tex;m.emissiveColor=Color3.White();m.backFaceCulling=false;m.disableLighting=true
   const panel=MeshBuilder.CreatePlane(en,{width:w,height:h},scene);panel.position.set(x,y,z);panel.rotation.y=angle;panel.material=m
  }
  box(0,-.36,0,62,.65,98,mat('#32354b'))
- box(0,-.03,0,12,.08,93,mat('#263143'))
+ const asphalt=mat('#495167')
+ const street=new DynamicTexture('rain-polished carriageway',{width:512,height:1024},scene,false),ctx=street.getContext()
+ ctx.fillStyle='#65707e';ctx.fillRect(0,0,512,1024)
+ for(let i=0;i<12000;i++){
+  const x=random()*512,y=random()*1024
+  ctx.fillStyle=random()<.55?'#495367':'#808898'
+  ctx.fillRect(x,y,.8+random()*2,.6+random()*2.5)
+ }
+ for(let i=0;i<1150;i++){
+  const side=random()<.5,x=side?random()*88:424+random()*88
+  ctx.fillStyle=side?'rgba(255,128,172,.24)':'rgba(111,247,239,.23)'
+  ctx.fillRect(x,random()*1024,1+random()*4,3+random()*25)
+ }
+ street.update();asphalt.diffuseTexture=street;asphalt.emissiveTexture=street
+ box(0,-.03,0,12,.08,93,asphalt)
  for(let z=-44;z<46;z+=5){box(0,.025,z,.12,.018,2.6,gold);for(const side of [-1,1])box(side*5.85,.03,z,.08,.02,4.8,cream)}
  for(const z of [-25,7,31])for(let x=-5;x<=5;x+=1.4)box(x,.04,z,.72,.02,2.5,mat('#95a0a6'))
  const names=['潮汐冰室','日輪放映','電氣商行','海星唱片','銀河茶座','港灣車房','魚燈工房','月波機舖','流星麵家']
@@ -100,6 +117,14 @@ export function createView(canvas:HTMLCanvasElement){
   if(Math.abs(x)<32&&Math.abs(z)<51||x>60&&x<100&&Math.abs(z)<28)continue
   const h=12+random()*50,w=5+random()*8
   box(x,h/2,z,w,h,w,facades[i%3]);box(x,h+1,z,w*.82,2,w*.82,wall);if(i%3===0){box(x,h+4,z,.22,8,.22,ledge);box(x,h+8,z,.4,.4,.4,pink)}
+ }
+ // Shop lights, suspended festoons and narrow fluorescent price boards.
+ for(const z of [-30,2,17,38]){
+  for(let i=0;i<19;i++){
+   const x=-9+i, y=6.5+.009*x*x
+   box(x,y,z,1.03,.045,.055,ink)
+   if(i%2===1){box(x,y-.16,z,.035,.31,.035,ink);staticPart('sphere',x,y-.4,z,.26,.29,.26,i%4===1?gold:pink)}
+  }
  }
  // Gateway with layered cantilevered roof, a suspended bilingual sign and lamps.
  for(const z of [-12,27]){
@@ -144,9 +169,16 @@ export function createView(canvas:HTMLCanvasElement){
  function person(color:string){
   const root=new TransformNode('walker',scene),jacket=mat(color)
   part(root,'sphere',0,.025,0,.78,.032,.52,mat('#252c3a'))
+  part(root,'box',0,.87,0,.5,.15,.34,ink)
   const torso=part(root,'box',0,1.12,0,.64,.65,.38,jacket)
+  for(const side of [-1,1]){
+   const strap=part(root,'box',side*.22,1.19,-.21,.08,.51,.08,ink);strap.rotation.z=side*.12
+   part(root,'box',side*.28,1.33,-.21,.12,.06,.06,cream)
+  }
   part(root,'box',0,1.18,-.22,.39,.43,.18,ink);part(root,'box',0,1.29,-.32,.27,.065,.035,mint)
   part(root,'sphere',0,1.73,0,.45,.53,.43,mat('#cd997f'));part(root,'sphere',0,1.9,-.035,.48,.32,.47,ink)
+  part(root,'box',0,1.79,-.185,.36,.18,.11,ink)
+  for(const side of [-1,1])part(root,'box',side*.205,1.74,.045,.065,.12,.14,ink)
   const limbs=[-1,1].map(s=>{
    const leg=new TransformNode('hip',scene);leg.parent=root;leg.position.set(s*.16,.85,0);part(leg,'box',0,-.32,0,.22,.63,.25,ink);part(leg,'box',0,-.72,.06,.24,.17,.36,mat('#b7cbd0'))
    const arm=new TransformNode('shoulder',scene);arm.parent=root;arm.position.set(s*.38,1.38,0);part(arm,'box',0,-.19,0,.21,.4,.24,jacket);part(arm,'box',0,-.47,0,.17,.22,.18,mat('#cd997f'))

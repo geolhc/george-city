@@ -134,4 +134,7 @@ function boot(){
  })
  window.addEventListener('resize',()=>v.engine.resize())
 }
-try{boot()}catch(e){console.error(e);open('未能開啟 3D 城市');para('請使用支援 WebGL 嘅瀏覽器，開啟硬件加速後再試。');button('重新載入',()=>location.reload())}
+async function launch(){try{await document.fonts.load('16px DistrictHK','月潮里');boot()}catch(e){console.error(e);open('未能開啟 3D 城市');para('請使用支援 WebGL 嘅瀏覽器，開啟硬件加速後再試。');button('重新載入',()=>location.reload())}
+
+}
+void launch()
