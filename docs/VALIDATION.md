@@ -21,3 +21,9 @@ completion of all five missions, car entry/exit and cosmetics.
 Camera wall clearance is simulation-tested; camera feel, NPC interaction UI,
 full navigation, full driven lap and simultaneous multi-touch remain release
 qualification gaps. No measured real-device performance is available.
+
+Final settled-build smoke run: PASS desktop and emulated mobile. Desktop reported
+only the existing favicon 404; mobile reported no console errors. An earlier run
+timed out while the build was being replaced; a complete rerun passed.
+Main JS: 1,252.31 kB minified / 309.52 kB gzip. This is a reliability release,
+not a demonstrated rendering-performance optimization.
