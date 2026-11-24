@@ -115,6 +115,7 @@ function boot(){
   npcTime+=dt;if(npcTime>.1){npcTime=0;residents.forEach((n,i)=>{const at=npcAt(i,s.clock);n.root.position.set(at.x,0,at.z);n.root.rotation.y=at.heading;n.animate(s.clock*5+i,at.walking?.38:0)})}
   traffic.forEach((car,i)=>{const cycle=(s.clock*3+i*48)%144;car.position.set(i?3:-3,0,cycle<72?cycle-36:108-cycle);car.rotation.y=cycle<72?0:Math.PI})
   v.markers.forEach((m,i)=>{m.position.y=1.68+.16*Math.sin(tick*2+i);m.rotation.y=tick*.8;m.setEnabled(!s.active)})
+  v.lanterns.forEach((m,i)=>{m.setEnabled(s.active?.id===4&&i>=s.active.stage);m.position.y=1.25+.16*Math.sin(tick*2+i);m.rotation.y=Math.sin(tick+i)*.4})
   const a=s.active,pos=a?sites[a.id][a.stage]:selected>=0?starts[selected]:undefined
   v.target.setEnabled(!!pos);if(pos){v.target.position.set(pos.x,1.55+.18*Math.sin(tick*3),pos.z);v.target.rotation.y=tick}
   const bot=a?.id===1&&a.stage===1?{x:p.x-1.2*Math.sin(p.heading),z:p.z-1.2*Math.cos(p.heading)}:sites[1][0]

@@ -115,6 +115,13 @@ export function createView(canvas:HTMLCanvasElement){
   box(s*6.6,2.2,z,.13,4.4,.13,ledge);box(s*6.35,4.35,z,.7,.1,.3,cream)
   box(s*7.15,.018,z,1.9,.018,2.6,mat(z%20?'#494457':'#36535b'))
  }
+ // A street cinema across from the plaza. The painted sail is original key art.
+ sign(8.7,3.6,21,4.8,2.2,'潮聲','MIDNIGHT SCREENING','#ffc991')
+ for(const x of [6.9,10.5])box(x,1.3,21,.15,2.6,.15,wall)
+ for(let z=-39;z<=40;z+=9){
+  const x=z%2?7.1:-7.1
+  box(x,.48,z,1.6,.19,.55,mat('#866864'));for(const leg of [-.55,.55])box(x+leg,.22,z,.13,.46,.43,ink)
+ }
  // Moonwheel plaza and harbour beacon
  staticPart('tube',14,.12,0,14,.24,14,ledge)
  staticPart('ring',14,5.1,0,8,8,8,violet,Math.PI/2)
@@ -136,6 +143,7 @@ export function createView(canvas:HTMLCanvasElement){
  }
  function person(color:string){
   const root=new TransformNode('walker',scene),jacket=mat(color)
+  part(root,'sphere',0,.025,0,.78,.032,.52,mat('#252c3a'))
   const torso=part(root,'box',0,1.12,0,.64,.65,.38,jacket)
   part(root,'box',0,1.18,-.22,.39,.43,.18,ink);part(root,'box',0,1.29,-.32,.27,.065,.035,mint)
   part(root,'sphere',0,1.73,0,.45,.53,.43,mat('#cd997f'));part(root,'sphere',0,1.9,-.035,.48,.32,.47,ink)
@@ -156,8 +164,17 @@ export function createView(canvas:HTMLCanvasElement){
  const player=person('#db655c'),car=vehicle('#cf515e');car.position.set(park.x,0,park.z)
  const racer=vehicle('#49adac');racer.position.set(garage.x,0,garage.z)
  const markers=starts.map((p,i)=>{const node=new TransformNode('signal',scene);node.position.set(p.x,1.6,p.z);const ring=part(node,'ring',0,0,0,.8,.8,.8,accents[i%4]);ring.rotation.x=Math.PI/2;return node})
+ const lanterns=sites[4].map((p,i)=>{
+  const root=new TransformNode('festival lantern',scene);root.position.set(p.x,1.35,p.z)
+  const shade=[gold,cream,pink,mint][i]
+  part(root,'sphere',0,0,0,i===0?1:.62,i===1?.82:.58,.54,shade)
+  if(i===0){const tail=part(root,'box',-.5,0,0,.3,.35,.12,gold);tail.rotation.z=.7;part(root,'sphere',.26,.1,-.23,.09,.09,.09,ink)}
+  if(i===2)for(const side of [-1,1])part(root,'sphere',side*.14,.37,0,.13,.42,.15,pink)
+  if(i===3)for(let j=0;j<5;j++){const ray=part(root,'box',Math.sin(j*1.257)*.28,Math.cos(j*1.257)*.28,0,.16,.39,.14,mint);ray.rotation.z=-j*1.257}
+  part(root,'tube',0,-.47,0,.07,.29,.07,gold);return root
+ })
  const target=new TransformNode('destination',scene);const gem=part(target,'box',0,0,0,.48,.48,.48,gold);gem.rotation.z=Math.PI/4;gem.rotation.x=.6
  const bot=new TransformNode('Ah Luk',scene);part(bot,'box',0,.57,0,.7,.63,.75,cream);part(bot,'box',0,.63,.39,.52,.19,.08,glass)
  for(const s of [-1,1])part(bot,'sphere',s*.24,.23,0,.32,.34,.5,ink)
- return {engine,scene,camera,player,person,vehicle,car,racer,markers,target,bot,mat,colors:[pink,mint,gold,violet],plazaLight:violet}
+ return {engine,scene,camera,player,person,vehicle,car,racer,markers,lanterns,target,bot,mat,colors:[pink,mint,gold,violet],plazaLight:violet}
 }
